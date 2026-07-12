@@ -9,22 +9,22 @@ import {MockERC20} from "../src/mocks/MockERC20.sol";
 import {IVotes} from "@openzeppelin/contracts/governance/utils/IVotes.sol";
 import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
 
-/// @notice Etap 7 — deploy ZMITYGOWANEGO wariantu DAO (fast, do iteracji demo):
-///         identyczna dystrybucja i parametry glosowania jak FAST DAO z Etapow 5-6,
-///         jedyna zmiana architektoniczna = egzekucja przez TimelockController
-///         (minDelay 120s = okno obronne agenta). Skarbiec nalezy do timelocka.
+/// @notice Stage 7 — deploys the MITIGATED DAO variant (fast, for iterating the demo):
+///         the same distribution and voting parameters as the FAST DAO from Stages 5-6,
+///         the only architectural change = execution through a TimelockController
+///         (minDelay 120s = the agent's defense window). The treasury is owned by the timelock.
 ///
-///         Cykl demo: propose -> 5s delay -> 30s glosowanie -> queue -> 120s okno
-///         obronne (tu dziala agent: cancel) -> execute juz niemozliwe. ~3 min total.
+///         Demo cycle: propose -> 5s delay -> 30s voting -> queue -> 120s defense window
+///         (this is where the agent acts: cancel) -> execute becomes impossible. ~3 min total.
 ///
 ///   forge script script/DeployTimelockedDAO.s.sol:DeployTimelockedDAO \
 ///     --rpc-url arc --broadcast
 contract DeployTimelockedDAO is Script {
     uint256 constant SUPPLY = 1_000_000e18;
-    uint48 constant VOTING_DELAY = 5; // 5 s (jak FAST DAO)
+    uint48 constant VOTING_DELAY = 5; // 5 s (like FAST DAO)
     uint32 constant VOTING_PERIOD = 30; // 30 s
-    uint256 constant QUORUM_PCT = 1; // celowo wciaz 1% — mitygacja to SAM timelock
-    uint256 constant MIN_DELAY = 120; // okno obronne timelocka (2 min)
+    uint256 constant QUORUM_PCT = 1; // deliberately still 1% — the mitigation is the timelock itself
+    uint256 constant MIN_DELAY = 120; // the timelock defense window (2 min)
 
     uint256 constant ATTACKER_ALLOC = 50_000e18;
     uint256 constant HONEST_ALLOC = 100_000e18;
@@ -41,8 +41,8 @@ contract DeployTimelockedDAO is Script {
 
         GovToken token = new GovToken(deployer, SUPPLY);
 
-        // Timelock: bez proposerow na starcie, egzekucja otwarta (address(0)),
-        // admin = deployer TYLKO na czas okablowania rol ponizej.
+        // Timelock: no proposers at the start, execution open (address(0)),
+        // admin = deployer ONLY for the duration of the role wiring below.
         address[] memory proposers = new address[](0);
         address[] memory executors = new address[](1);
         executors[0] = address(0);
@@ -53,12 +53,12 @@ contract DeployTimelockedDAO is Script {
             IVotes(address(token)), timelock, VOTING_DELAY, VOTING_PERIOD, QUORUM_PCT
         );
 
-        // Okablowanie rol i zrzeczenie sie admina — timelock zostaje samorzadny.
+        // Wire the roles and renounce admin — the timelock becomes self-governed.
         timelock.grantRole(timelock.PROPOSER_ROLE(), address(gov));
         timelock.grantRole(timelock.CANCELLER_ROLE(), agent);
         timelock.renounceRole(timelock.DEFAULT_ADMIN_ROLE(), deployer);
 
-        // KLUCZOWE: owner skarbca = TIMELOCK (on wykonuje propozycje), nie Governor.
+        // KEY: the treasury owner = the TIMELOCK (it executes proposals), not the Governor.
         Treasury treasury = new Treasury(address(timelock));
         MockERC20 asset = new MockERC20("Mock USD", "mUSD", 6);
         asset.mint(address(treasury), TREASURY_FUNDS);

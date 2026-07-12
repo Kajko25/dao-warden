@@ -10,20 +10,20 @@ import {IVotes} from "@openzeppelin/contracts/governance/utils/IVotes.sol";
 import {IGovernor} from "@openzeppelin/contracts/governance/IGovernor.sol";
 import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
 
-/// @notice Etap 7 — golden test mitygacji. Odtwarzamy IDENTYCZNY atak jak w Etapie 2
-///         (te same alokacje: atakujacy 50k WGOV, uczciwy 100k ale APATYCZNY — nie
-///         glosuje; kworum 1%, threshold 0), zmieniona jest tylko jedna zmienna:
-///         egzekucja przechodzi przez TimelockController.
+/// @notice Stage 7 — the mitigation golden test. We reproduce an IDENTICAL attack to Stage 2
+///         (the same allocations: attacker 50k WGOV, honest 100k but APATHETIC — does not
+///         vote; quorum 1%, threshold 0), with only one variable changed: execution goes
+///         through a TimelockController.
 ///
-///         Teza Etapu 7: timelock NIE zatrzymuje ataku sam z siebie — on tworzy OKNO
-///         OBRONNE po wygranym glosowaniu. Zatrzymuje go dopiero ktos, kto w tym oknie
-///         zareaguje (u nas: agent-straznik z CANCELLER_ROLE). Stad cztery dowody:
-///           1) atak nie moze byc wykonany natychmiast po Succeeded (koniec "drenazu
-///              w jednej transakcji" z Etapu 2),
-///           2) w oknie opoznienia agent anuluje operacje -> skarbiec nietkniety,
-///           3) UCZCIWIE: bez anulowania atak wchodzi po uplywie minDelay — okno
-///              trzeba wykorzystac, samo opoznienie to nie obrona,
-///           4) legalne propozycje dzialaja normalnie (timelock nie psuje governance).
+///         The Stage 7 thesis: the timelock does NOT stop the attack by itself — it creates a
+///         DEFENSE WINDOW after a won vote. It is only stopped by someone who reacts in that
+///         window (here: the guardian agent with CANCELLER_ROLE). Hence four proofs:
+///           1) the attack cannot be executed immediately after Succeeded (the end of the
+///              "drain in a single transaction" from Stage 2),
+///           2) in the delay window the agent cancels the operation -> treasury intact,
+///           3) HONESTLY: without cancellation the attack lands after minDelay — the window
+///              must be used, delay alone is not a defense,
+///           4) legitimate proposals still work (the timelock does not break governance).
 contract TimelockDefenseTest is Test {
     GovToken internal token;
     TimelockController internal timelock;
@@ -32,27 +32,27 @@ contract TimelockDefenseTest is Test {
     MockERC20 internal asset;
 
     address internal attacker = makeAddr("attacker");
-    address internal honest = makeAddr("honest"); // apatyczny — ma glosy, nie glosuje
-    address internal agent = makeAddr("agent"); // straznik z CANCELLER_ROLE
-    address internal recipient = makeAddr("recipient"); // odbiorca legalnej wyplaty
+    address internal honest = makeAddr("honest"); // apathetic — has votes, does not vote
+    address internal agent = makeAddr("agent"); // guardian with CANCELLER_ROLE
+    address internal recipient = makeAddr("recipient"); // recipient of the legitimate payout
 
     uint256 internal constant SUPPLY = 1_000_000e18;
     uint256 internal constant ATTACKER_ALLOC = 50_000e18;
     uint256 internal constant HONEST_ALLOC = 100_000e18;
-    uint256 internal constant TREASURY_FUNDS = 1_000_000e6; // 1 mln mUSD
+    uint256 internal constant TREASURY_FUNDS = 1_000_000e6; // 1M mUSD
 
-    uint48 internal constant VOTING_DELAY = 60; // jak wariant realistyczny z Etapu 2
+    uint48 internal constant VOTING_DELAY = 60; // like the realistic variant from Stage 2
     uint32 internal constant VOTING_PERIOD = 3600;
-    uint256 internal constant QUORUM_PCT = 1; // celowo wciaz 1%
-    uint256 internal constant MIN_DELAY = 1 days; // okno obronne timelocka
+    uint256 internal constant QUORUM_PCT = 1; // deliberately still 1%
+    uint256 internal constant MIN_DELAY = 1 days; // the timelock's defense window
 
     function setUp() public {
-        vm.warp(1_800_000_000); // realny punkt startu zegara (checkpointy timestamp)
+        vm.warp(1_800_000_000); // a realistic clock start (timestamp checkpoints)
 
         token = new GovToken(address(this), SUPPLY);
 
-        // Timelock: na starcie bez proposerow, egzekucja otwarta (address(0)),
-        // admin = deployer TYLKO na czas okablowania rol (potem zrzeczenie).
+        // Timelock: no proposers at the start, execution open (address(0)),
+        // admin = deployer ONLY for the duration of the role wiring (then renounced).
         address[] memory proposers = new address[](0);
         address[] memory executors = new address[](1);
         executors[0] = address(0);
@@ -62,96 +62,96 @@ contract TimelockDefenseTest is Test {
             IVotes(address(token)), timelock, VOTING_DELAY, VOTING_PERIOD, QUORUM_PCT
         );
 
-        // Okablowanie rol: Governor kolejkuje wygrane propozycje, agent moze anulowac
-        // w oknie obronnym. Na koncu deployer zrzeka sie admina — timelock zostaje
-        // samorzadny (adminem jest tylko on sam, zmiany rol tylko przez governance).
+        // Role wiring: the Governor queues won proposals, the agent can cancel in the
+        // defense window. Finally the deployer renounces admin — the timelock becomes
+        // self-governed (only it is its own admin; role changes only via governance).
         timelock.grantRole(timelock.PROPOSER_ROLE(), address(gov));
         timelock.grantRole(timelock.CANCELLER_ROLE(), agent);
         timelock.renounceRole(timelock.DEFAULT_ADMIN_ROLE(), address(this));
 
-        // KLUCZOWA zmiana wzgledem wariantu podatnego: skarbiec nalezy do TIMELOCKA
-        // (to on wykonuje transakcje propozycji), nie do Governora.
+        // The KEY change vs. the vulnerable variant: the treasury belongs to the TIMELOCK
+        // (it executes the proposal transactions), not to the Governor.
         treasury = new Treasury(address(timelock));
         asset = new MockERC20("Mock USD", "mUSD", 6);
         asset.mint(address(treasury), TREASURY_FUNDS);
 
-        // Dystrybucja jak w Etapie 2: atakujacy 50k, uczciwy 100k.
+        // Distribution as in Stage 2: attacker 50k, honest 100k.
         token.transfer(attacker, ATTACKER_ALLOC);
         token.transfer(honest, HONEST_ALLOC);
     }
 
-    // --- Okablowanie ---
+    // --- Wiring ---
 
     function test_WiringRolesAndOwnership() public view {
-        assertEq(treasury.owner(), address(timelock), "owner skarbca musi byc timelock");
+        assertEq(treasury.owner(), address(timelock), "treasury owner must be the timelock");
         assertEq(gov.timelock(), address(timelock));
         assertTrue(timelock.hasRole(timelock.PROPOSER_ROLE(), address(gov)));
         assertTrue(timelock.hasRole(timelock.CANCELLER_ROLE(), agent));
-        // deployer nie ma juz zadnej wladzy nad timelockiem
+        // the deployer no longer has any power over the timelock
         assertFalse(timelock.hasRole(timelock.DEFAULT_ADMIN_ROLE(), address(this)));
         assertEq(timelock.getMinDelay(), MIN_DELAY);
-        assertTrue(gov.proposalNeedsQueuing(0), "kazda propozycja musi isc przez kolejke");
+        assertTrue(gov.proposalNeedsQueuing(0), "every proposal must go through the queue");
     }
 
-    // --- Dowod 1: koniec drenazu w jednej transakcji ---
+    // --- Proof 1: the end of the drain in a single transaction ---
 
     function test_Attack_CannotExecuteImmediatelyAfterSucceeded() public {
         (uint256 proposalId,,,, bytes32 descHash) = _runAttackVote();
         assertEq(uint8(gov.state(proposalId)), uint8(IGovernor.ProposalState.Succeeded));
 
-        // W Etapie 2 ten sam moment = natychmiastowy drenaz. Teraz: operacja nie jest
-        // w kolejce timelocka, wiec executeBatch rewertuje.
+        // In Stage 2 this same moment = an immediate drain. Now: the operation is not in the
+        // timelock queue, so executeBatch reverts.
         (address[] memory t, uint256[] memory v, bytes[] memory c,,) = _attackProposal();
         vm.expectRevert();
         gov.execute(t, v, c, descHash);
 
-        assertEq(treasury.balanceOf(address(asset)), TREASURY_FUNDS, "skarbiec musi byc caly");
+        assertEq(treasury.balanceOf(address(asset)), TREASURY_FUNDS, "treasury must be intact");
     }
 
-    // --- Dowod 2 (sedno Etapu 7): agent anuluje w oknie obronnym ---
+    // --- Proof 2 (the core of Stage 7): the agent cancels in the defense window ---
 
     function test_Attack_CanceledByAgentInDefenseWindow() public {
         (uint256 proposalId,,,, bytes32 descHash) = _runAttackVote();
         (address[] memory t, uint256[] memory v, bytes[] memory c,,) = _attackProposal();
 
-        // Atakujacy kolejkuje swoja wygrana propozycje (queue jest permissionless).
+        // The attacker queues its won proposal (queue is permissionless).
         vm.prank(attacker);
         gov.queue(t, v, c, descHash);
         assertEq(uint8(gov.state(proposalId)), uint8(IGovernor.ProposalState.Queued));
 
-        // Proba wykonania PRZED uplywem minDelay — timelock odmawia (operacja nie Ready).
+        // Attempt to execute BEFORE minDelay elapses — the timelock refuses (operation not Ready).
         vm.warp(block.timestamp + MIN_DELAY - 1);
         vm.prank(attacker);
         vm.expectRevert();
         gov.execute(t, v, c, descHash);
 
-        // AGENT dziala w oknie obronnym: liczy id operacji tak jak Governor
-        // (salt = bytes20(adres governora) XOR descriptionHash) i anuluje na timelocku.
+        // The AGENT acts in the defense window: it computes the operation id like the Governor
+        // (salt = bytes20(governor address) XOR descriptionHash) and cancels it on the timelock.
         bytes32 salt = bytes20(address(gov)) ^ descHash;
         bytes32 operationId = timelock.hashOperationBatch(t, v, c, 0, salt);
-        assertTrue(timelock.isOperationPending(operationId), "operacja powinna czekac w kolejce");
+        assertTrue(timelock.isOperationPending(operationId), "operation should be waiting in the queue");
 
         vm.prank(agent);
         timelock.cancel(operationId);
 
-        // Governor widzi anulowanie na timelocku i raportuje Canceled.
+        // The Governor sees the cancellation on the timelock and reports Canceled.
         assertEq(
             uint8(gov.state(proposalId)),
             uint8(IGovernor.ProposalState.Canceled),
-            "po anulowaniu przez agenta stan musi byc Canceled"
+            "after the agent cancels, the state must be Canceled"
         );
 
-        // Nawet po uplywie pelnego minDelay atak jest martwy.
+        // Even after the full minDelay elapses the attack is dead.
         vm.warp(block.timestamp + 2);
         vm.prank(attacker);
         vm.expectRevert();
         gov.execute(t, v, c, descHash);
 
-        assertEq(treasury.balanceOf(address(asset)), TREASURY_FUNDS, "skarbiec nietkniety");
-        assertEq(asset.balanceOf(attacker), 0, "atakujacy nie dostal nic");
+        assertEq(treasury.balanceOf(address(asset)), TREASURY_FUNDS, "treasury intact");
+        assertEq(asset.balanceOf(attacker), 0, "the attacker got nothing");
     }
 
-    // --- Dowod 3 (uczciwosc): samo opoznienie to NIE obrona ---
+    // --- Proof 3 (honesty): delay alone is NOT a defense ---
 
     function test_Attack_WithoutCancellation_LandsAfterDelay() public {
         (,,,, bytes32 descHash) = _runAttackVote();
@@ -160,18 +160,18 @@ contract TimelockDefenseTest is Test {
         vm.prank(attacker);
         gov.queue(t, v, c, descHash);
 
-        // Nikt nie reaguje w oknie obronnym...
+        // Nobody reacts in the defense window...
         vm.warp(block.timestamp + MIN_DELAY + 1);
         vm.prank(attacker);
         gov.execute(t, v, c, descHash);
 
-        // ...wiec atak ostatecznie wchodzi. To wlasnie dlatego timelock i agent sa
-        // KOMPLEMENTARNE: timelock kupuje czas, agent ten czas wykorzystuje.
+        // ...so the attack eventually lands. This is exactly why the timelock and the agent
+        // are COMPLEMENTARY: the timelock buys time, the agent uses that time.
         assertEq(treasury.balanceOf(address(asset)), 0);
         assertEq(asset.balanceOf(attacker), TREASURY_FUNDS);
     }
 
-    // --- Dowod 4: legalne governance dziala normalnie ---
+    // --- Proof 4: legitimate governance still works ---
 
     function test_LegitProposal_ExecutesAfterDelay() public {
         uint256 payout = 100_000e6;
@@ -182,7 +182,7 @@ contract TimelockDefenseTest is Test {
 
         (address[] memory t, uint256[] memory v, bytes[] memory c) =
             _withdrawCall(recipient, payout);
-        string memory description = "Wyplata operacyjna: grant 100k mUSD";
+        string memory description = "Operational payout: 100k mUSD grant";
         bytes32 descHash = keccak256(bytes(description));
 
         vm.prank(honest);
@@ -199,14 +199,14 @@ contract TimelockDefenseTest is Test {
         vm.warp(block.timestamp + MIN_DELAY + 1);
         gov.execute(t, v, c, descHash);
 
-        assertEq(asset.balanceOf(recipient), payout, "odbiorca musi dostac wyplate");
+        assertEq(asset.balanceOf(recipient), payout, "the recipient must receive the payout");
         assertEq(treasury.balanceOf(address(asset)), TREASURY_FUNDS - payout);
         assertEq(uint8(gov.state(proposalId)), uint8(IGovernor.ProposalState.Executed));
     }
 
-    // --- Pomocnicze: identyczny scenariusz ataku jak w Etapie 2 ---
+    // --- Helpers: the same attack scenario as in Stage 2 ---
 
-    /// @dev Propozycja ataku: wyplata CALEGO skarbca na adres atakujacego.
+    /// @dev The attack proposal: withdraw the ENTIRE treasury to the attacker's address.
     function _attackProposal()
         internal
         view
@@ -219,13 +219,13 @@ contract TimelockDefenseTest is Test {
         )
     {
         (targets, values, calldatas) = _withdrawCall(attacker, TREASURY_FUNDS);
-        // Ta sama socjotechnika co WGIP-1: narracja "grant operacyjny" maskuje drenaz.
-        description = "WGIP-T1: Grant operacyjny na rozwoj ekosystemu";
+        // The same social engineering as WGIP-1: an "operational grant" narrative masks the drain.
+        description = "WGIP-T1: Operational grant for ecosystem growth";
         descHash = keccak256(bytes(description));
     }
 
-    /// @dev Przeprowadza atak do konca glosowania: delegacja -> propose -> glos For
-    ///      (uczciwy holder APATYCZNY — nie glosuje) -> warp za deadline (Succeeded).
+    /// @dev Runs the attack through the end of voting: delegate -> propose -> For vote
+    ///      (the honest holder is APATHETIC — does not vote) -> warp past the deadline (Succeeded).
     function _runAttackVote()
         internal
         returns (
@@ -248,7 +248,7 @@ contract TimelockDefenseTest is Test {
 
         vm.warp(gov.proposalSnapshot(proposalId) + 1);
         vm.prank(attacker);
-        gov.castVote(proposalId, 1); // For — 50k > kworum 10k, nikt nie oponuje
+        gov.castVote(proposalId, 1); // For — 50k > quorum 10k, nobody objects
 
         vm.warp(gov.proposalDeadline(proposalId) + 1);
     }

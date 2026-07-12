@@ -5,15 +5,15 @@ import {Test} from "forge-std/Test.sol";
 import {IdentityRegistry} from "../src/erc8004/IdentityRegistry.sol";
 import {ValidationRegistry} from "../src/erc8004/ValidationRegistry.sol";
 
-/// @title Testy ERC-8004 (hermetyczne) — Etap 6 DAO-WARDEN
-/// @notice Sprawdza pelny cykl: rejestracja agenta -> agent sklada zadanie walidacji
-///         decyzji -> walidator odpowiada ocena -> agregat reputacji. Plus kontrola
-///         dostepu i granice wartosci. Zero zaleznosci od sieci.
+/// @title ERC-8004 tests (hermetic) — DAO-WARDEN Stage 6
+/// @notice Checks the full cycle: register an agent -> the agent files a decision-validation
+///         request -> the validator answers with a score -> reputation aggregate. Plus access
+///         control and value bounds. Zero network dependencies.
 contract ERC8004Test is Test {
     IdentityRegistry identity;
     ValidationRegistry validation;
 
-    address agent = makeAddr("agent"); // portfel agenta (rejestruje sie sam)
+    address agent = makeAddr("agent"); // the agent wallet (registers itself)
     address validator = makeAddr("validator");
     address outsider = makeAddr("outsider");
 
@@ -30,15 +30,15 @@ contract ERC8004Test is Test {
         vm.prank(agent);
         uint256 id = identity.register(AGENT_URI);
 
-        assertEq(id, 1, "pierwszy agentId = 1");
-        assertEq(identity.ownerOf(id), agent, "wlasciciel = rejestrujacy");
+        assertEq(id, 1, "first agentId = 1");
+        assertEq(identity.ownerOf(id), agent, "owner = registrant");
         assertEq(identity.tokenURI(id), AGENT_URI, "tokenURI = AgentCard");
-        assertEq(identity.getAgentWallet(id), agent, "portfel domyslnie = wlasciciel");
+        assertEq(identity.getAgentWallet(id), agent, "wallet defaults to owner");
         assertEq(identity.totalRegistered(), 1);
 
         vm.prank(outsider);
         uint256 id2 = identity.register("ipfs://second");
-        assertEq(id2, 2, "kolejny agentId = 2");
+        assertEq(id2, 2, "next agentId = 2");
     }
 
     function test_RegisterWithMetadata() public {
@@ -51,7 +51,7 @@ contract ERC8004Test is Test {
 
         assertEq(identity.getMetadata(id, "framework"), bytes("dao-warden"));
         assertEq(identity.getMetadata(id, "guards"), abi.encodePacked(address(0xBEEF)));
-        assertEq(identity.getMetadata(id, "brak"), bytes(""), "nieustawiony klucz => pusto");
+        assertEq(identity.getMetadata(id, "missing"), bytes(""), "unset key => empty");
     }
 
     function test_OnlyOwnerCanSetUri() public {
@@ -67,18 +67,18 @@ contract ERC8004Test is Test {
         assertEq(identity.tokenURI(id), "ipfs://v2");
     }
 
-    // --- ValidationRegistry: pelny cykl -------------------------------------
+    // --- ValidationRegistry: full cycle -------------------------------------
 
     function test_FullDecisionAuditAndReputationCycle() public {
         vm.prank(agent);
         uint256 id = identity.register(AGENT_URI);
 
-        // Agent sklada zadanie walidacji swojej decyzji (audytowalny slad).
-        bytes32 reqHash = keccak256("decyzja: WGIP-2 CRITICAL 100 VOTE_NO");
+        // The agent files a validation request for its decision (an auditable trail).
+        bytes32 reqHash = keccak256("decision: WGIP-2 CRITICAL 100 VOTE_NO");
         vm.prank(agent);
         validation.validationRequest(validator, id, "ipfs://decisionRecord", reqHash);
 
-        // Przed odpowiedzia: zadanie istnieje, ale bez oceny.
+        // Before the response: the request exists, but with no score.
         {
             (address v, uint256 aId, uint8 resp,,,) = validation.getValidationStatus(reqHash);
             assertEq(v, validator);
@@ -87,10 +87,10 @@ contract ERC8004Test is Test {
         }
         {
             (uint64 count0,) = validation.getSummary(id, new address[](0), "");
-            assertEq(count0, 0, "brak ODPOWIEDZIANYCH walidacji");
+            assertEq(count0, 0, "no ANSWERED validations");
         }
 
-        // Walidator ocenia decyzje na 95/100.
+        // The validator scores the decision 95/100.
         vm.prank(validator);
         validation.validationResponse(reqHash, 95, "ipfs://validatorNote", keccak256("ok"), "attack-defense");
 
@@ -102,10 +102,10 @@ contract ERC8004Test is Test {
         {
             (uint64 count1, uint8 avg1) = validation.getSummary(id, new address[](0), "");
             assertEq(count1, 1);
-            assertEq(avg1, 95, "srednia reputacja = 95");
+            assertEq(avg1, 95, "average reputation = 95");
         }
 
-        // Filtr po tagu i po walidatorze.
+        // Filter by tag and by validator.
         {
             address[] memory vs = new address[](1);
             vs[0] = validator;
@@ -114,11 +114,11 @@ contract ERC8004Test is Test {
             assertEq(avg2, 95);
         }
         {
-            (uint64 count3,) = validation.getSummary(id, new address[](0), "inny-tag");
-            assertEq(count3, 0, "filtr taga wyklucza");
+            (uint64 count3,) = validation.getSummary(id, new address[](0), "other-tag");
+            assertEq(count3, 0, "tag filter excludes");
         }
 
-        // Indeksy.
+        // Indexes.
         assertEq(validation.getAgentValidations(id).length, 1);
         assertEq(validation.getValidatorRequests(validator).length, 1);
     }
@@ -141,10 +141,10 @@ contract ERC8004Test is Test {
 
         (uint64 count, uint8 avg) = validation.getSummary(id, new address[](0), "");
         assertEq(count, 2);
-        assertEq(avg, 90, "srednia 100 i 80 = 90");
+        assertEq(avg, 90, "average of 100 and 80 = 90");
     }
 
-    // --- ValidationRegistry: kontrola dostepu i granice ---------------------
+    // --- ValidationRegistry: access control and bounds ----------------------
 
     function test_OnlyAgentOwnerCanRequest() public {
         vm.prank(agent);
@@ -193,6 +193,6 @@ contract ERC8004Test is Test {
     function test_UnknownRequestResponseReverts() public {
         vm.prank(validator);
         vm.expectRevert(bytes("ValidationRegistry: unknown request"));
-        validation.validationResponse(keccak256("nieistnieje"), 50, "", bytes32(0), "");
+        validation.validationResponse(keccak256("does-not-exist"), 50, "", bytes32(0), "");
     }
 }

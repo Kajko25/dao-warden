@@ -10,8 +10,8 @@ import {MockERC20} from "../src/mocks/MockERC20.sol";
 import {IVotes} from "@openzeppelin/contracts/governance/utils/IVotes.sol";
 import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
 
-/// @notice Pomiar kosztu deploymentu (gas) kazdego kontraktu — do oszacowania
-///         kosztu on-chain na Arc. Uruchom: forge test --match-test test_MeasureDeployGas -vv
+/// @notice Measures the deployment cost (gas) of each contract — to estimate the on-chain
+///         cost on Arc. Run: forge test --match-test test_MeasureDeployGas -vv
 contract DeployGasTest is Test {
     function test_MeasureDeployGas() public {
         vm.warp(1_800_000_000);
@@ -33,7 +33,7 @@ contract DeployGasTest is Test {
         console.log("MockERC20   deploy gas:", g - gasleft());
     }
 
-    /// @notice Estymata dla Etapu 7 (wariant z timelockiem) — deploy + okablowanie rol.
+    /// @notice Estimate for Stage 7 (the timelocked variant) — deploy + role wiring.
     function test_MeasureTimelockedDeployGas() public {
         vm.warp(1_800_000_000);
         GovToken token = new GovToken(address(this), 1_000_000e18);
@@ -56,7 +56,7 @@ contract DeployGasTest is Test {
         timelock.grantRole(timelock.PROPOSER_ROLE(), address(gov));
         timelock.grantRole(timelock.CANCELLER_ROLE(), makeAddr("agent"));
         timelock.renounceRole(timelock.DEFAULT_ADMIN_ROLE(), address(this));
-        console.log("okablowanie rol (3 tx) razem gas :", g - gasleft());
+        console.log("role wiring (3 tx) total gas     :", g - gasleft());
 
         g = gasleft();
         new Treasury(address(timelock));

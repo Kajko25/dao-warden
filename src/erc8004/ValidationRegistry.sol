@@ -5,27 +5,26 @@ interface IIdentityRegistry {
     function ownerOf(uint256 tokenId) external view returns (address);
 }
 
-/// @title ValidationRegistry — rejestr walidacji wg ERC-8004 (Trustless Agents)
-/// @notice Nosi DWIE funkcje Etapu 6 DAO-WARDEN naraz:
-///         1. **Audytowalny slad decyzji** — agent sklada `validationRequest` dla
-///            KAZDEJ ocenionej propozycji: `requestURI` wskazuje na rekord decyzji
-///            (co oflagowal i dlaczego, na IPFS), a `requestHash` to keccak256 tego
-///            rekordu (zobowiazanie kryptograficzne — decyzji nie da sie pozniej po
-///            cichu zmienic).
-///         2. **Sygnal reputacji od walidatora** — niezalezny portfel walidatora
-///            odpowiada `validationResponse` z ocena 0-100 (0 = decyzja bledna,
-///            100 = w pelni potwierdzona). `getSummary` agreguje to w reputacje agenta.
-/// @dev    Wiernosc vs. specyfikacja: uzywamy `constructor(identityRegistry)` zamiast
-///         wzorca `initialize` (brak proxy — prostszy deploy). Reszta sygnatur
-///         (`validationRequest`, `validationResponse`, `getValidationStatus`,
-///         `getSummary`, `getAgentValidations`, `getValidatorRequests`) jest zgodna.
+/// @title ValidationRegistry — a validation registry per ERC-8004 (Trustless Agents)
+/// @notice Carries BOTH of DAO-WARDEN's Stage 6 functions at once:
+///         1. **An auditable decision trail** — the agent files a `validationRequest` for
+///            EVERY evaluated proposal: `requestURI` points to the decision record (what it
+///            flagged and why, on IPFS), and `requestHash` is the keccak256 of that record
+///            (a cryptographic commitment — the decision cannot be silently changed later).
+///         2. **A reputation signal from a validator** — an independent validator wallet
+///            answers with a `validationResponse` scored 0-100 (0 = the decision is wrong,
+///            100 = fully confirmed). `getSummary` aggregates this into the agent's reputation.
+/// @dev    Fidelity vs. the spec: we use `constructor(identityRegistry)` instead of the
+///         `initialize` pattern (no proxy — simpler deploy). The rest of the signatures
+///         (`validationRequest`, `validationResponse`, `getValidationStatus`, `getSummary`,
+///         `getAgentValidations`, `getValidatorRequests`) are compliant.
 contract ValidationRegistry {
     IIdentityRegistry public immutable identityRegistry;
 
     struct Request {
-        address validatorAddress; // != 0 => zadanie istnieje
+        address validatorAddress; // != 0 => the request exists
         uint256 agentId;
-        uint8 response; // ostatnia ocena walidatora (0-100)
+        uint8 response; // the validator's latest score (0-100)
         bool answered;
         bytes32 responseHash;
         string tag;
@@ -58,13 +57,13 @@ contract ValidationRegistry {
         return address(identityRegistry);
     }
 
-    // --- Zadanie walidacji (sklada wlasciciel agenta) ------------------------
+    // --- Validation request (filed by the agent owner) ----------------------
 
-    /// @notice Agent (wlasciciel `agentId`) rejestruje decyzje do walidacji.
-    /// @param validatorAddress portfel uprawniony do odpowiedzi
-    /// @param agentId          agent skladajacy zadanie (musi byc jego wlascicielem)
-    /// @param requestURI       adres rekordu decyzji off-chain (np. ipfs://...)
-    /// @param requestHash      keccak256 kanonicznego rekordu decyzji (zobowiazanie)
+    /// @notice The agent (owner of `agentId`) registers a decision for validation.
+    /// @param validatorAddress the wallet authorized to respond
+    /// @param agentId          the agent filing the request (must be its owner)
+    /// @param requestURI       the address of the off-chain decision record (e.g. ipfs://...)
+    /// @param requestHash      keccak256 of the canonical decision record (the commitment)
     function validationRequest(
         address validatorAddress,
         uint256 agentId,
@@ -91,9 +90,9 @@ contract ValidationRegistry {
         emit ValidationRequest(validatorAddress, agentId, requestURI, requestHash);
     }
 
-    // --- Odpowiedz walidatora (sygnal reputacji) ----------------------------
+    // --- Validator response (the reputation signal) -------------------------
 
-    /// @notice Walidator ocenia wczesniej zlozona decyzje. `response` 0-100.
+    /// @notice The validator scores a previously filed decision. `response` 0-100.
     function validationResponse(
         bytes32 requestHash,
         uint8 response,
@@ -115,7 +114,7 @@ contract ValidationRegistry {
         emit ValidationResponse(r.validatorAddress, r.agentId, requestHash, response, responseURI, responseHash, tag);
     }
 
-    // --- Odczyty -------------------------------------------------------------
+    // --- Reads ---------------------------------------------------------------
 
     function getValidationStatus(bytes32 requestHash)
         external
@@ -133,9 +132,9 @@ contract ValidationRegistry {
         return (r.validatorAddress, r.agentId, r.response, r.responseHash, r.tag, r.lastUpdate);
     }
 
-    /// @notice Agregat reputacji agenta: liczba ODPOWIEDZIANYCH walidacji i srednia ocena.
-    /// @param validatorAddresses filtr walidatorow (pusta lista => wszyscy)
-    /// @param tag                filtr tagu (pusty => dowolny)
+    /// @notice An agent's reputation aggregate: the number of ANSWERED validations and the average score.
+    /// @param validatorAddresses a validator filter (empty list => all)
+    /// @param tag                a tag filter (empty => any)
     function getSummary(uint256 agentId, address[] calldata validatorAddresses, string calldata tag)
         external
         view

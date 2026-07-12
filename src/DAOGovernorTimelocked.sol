@@ -13,22 +13,22 @@ import {GovernorTimelockControl} from
 import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
 import {IVotes} from "@openzeppelin/contracts/governance/utils/IVotes.sol";
 
-/// @title DAOGovernorTimelocked — wariant ZMITYGOWANY (Etap 7)
-/// @notice Eksperyment kontrolowany: zmieniamy DOKLADNIE JEDNA zmienna wzgledem
-///         podatnego DAOGovernor — dodajemy timelock (GovernorTimelockControl).
-///         Kworum 1% i proposalThreshold=0 zostaja BEZ ZMIAN, zeby dowod byl czysty:
-///         to sam timelock zatrzymuje atak klasy BONK, a nie inne parametry.
+/// @title DAOGovernorTimelocked — the MITIGATED variant (Stage 7)
+/// @notice A controlled experiment: we change EXACTLY ONE variable relative to the
+///         vulnerable DAOGovernor — we add a timelock (GovernorTimelockControl).
+///         The 1% quorum and proposalThreshold=0 stay UNCHANGED, so the proof is clean:
+///         it is the timelock itself that stops the BONK-class attack, not other parameters.
 ///
-///         Jak zmienia sie cykl zycia propozycji:
-///           podatny:      Succeeded -> execute() natychmiast (zero okna obronnego)
-///           z timelockiem: Succeeded -> queue() -> [okno minDelay] -> execute()
-///         W oknie minDelay kazdy z rola CANCELLER_ROLE na timelocku (u nas: agent)
-///         moze anulowac operacje — Governor zobaczy to i zaraportuje Canceled.
+///         How the proposal lifecycle changes:
+///           vulnerable:      Succeeded -> execute() immediately (zero defense window)
+///           with timelock:   Succeeded -> queue() -> [minDelay window] -> execute()
+///         In the minDelay window anyone with CANCELLER_ROLE on the timelock (here: the
+///         agent) can cancel the operation — the Governor sees it and reports Canceled.
 ///
-/// @dev    WAZNE przesuniecie wlasnosci: przy GovernorTimelockControl to TIMELOCK
-///         (nie Governor) wykonuje transakcje propozycji, wiec owner Treasury musi
-///         byc adres timelocka. Governor dostaje na timelocku PROPOSER_ROLE
-///         (kolejkuje wygrane propozycje); egzekucja jest otwarta (executor=address(0)).
+/// @dev    IMPORTANT ownership shift: with GovernorTimelockControl it is the TIMELOCK
+///         (not the Governor) that executes proposal transactions, so the Treasury owner
+///         must be the timelock's address. The Governor gets PROPOSER_ROLE on the timelock
+///         (queues won proposals); execution is open (executor=address(0)).
 contract DAOGovernorTimelocked is
     Governor,
     GovernorSettings,
@@ -37,11 +37,11 @@ contract DAOGovernorTimelocked is
     GovernorVotesQuorumFraction,
     GovernorTimelockControl
 {
-    /// @param token            token glosujacy (ERC20Votes, zegar timestamp)
-    /// @param timelockAddress  TimelockController, przez ktory przechodzi egzekucja
-    /// @param votingDelaySec   sekundy od zlozenia propozycji do startu glosowania
-    /// @param votingPeriodSec  sekundy trwania glosowania
-    /// @param quorumPercent    procent supply na kworum (celowo wciaz 1)
+    /// @param token            the voting token (ERC20Votes, timestamp clock)
+    /// @param timelockAddress  the TimelockController that execution passes through
+    /// @param votingDelaySec   seconds from proposal submission to the voting start
+    /// @param votingPeriodSec  seconds that voting lasts
+    /// @param quorumPercent    the percent of supply for quorum (deliberately still 1)
     constructor(
         IVotes token,
         TimelockController timelockAddress,
@@ -50,13 +50,13 @@ contract DAOGovernorTimelocked is
         uint256 quorumPercent
     )
         Governor("DAOGovernorTimelocked")
-        GovernorSettings(votingDelaySec, votingPeriodSec, 0 /* threshold celowo 0 */)
+        GovernorSettings(votingDelaySec, votingPeriodSec, 0 /* threshold deliberately 0 */)
         GovernorVotes(token)
         GovernorVotesQuorumFraction(quorumPercent)
         GovernorTimelockControl(timelockAddress)
     {}
 
-    // --- Override'y wymagane przy laczeniu rozszerzen ---
+    // --- Overrides required when combining extensions ---
 
     function votingDelay() public view override(Governor, GovernorSettings) returns (uint256) {
         return super.votingDelay();
@@ -84,12 +84,12 @@ contract DAOGovernorTimelocked is
         return super.proposalThreshold();
     }
 
-    // --- Override'y wymagane przez GovernorTimelockControl ---
-    // (laczenie stanu/egzekucji Governora z kolejka timelocka)
+    // --- Overrides required by GovernorTimelockControl ---
+    // (wiring the Governor's state/execution to the timelock queue)
 
-    /// @dev Stan propozycji z uwzglednieniem timelocka: jesli operacja w kolejce
-    ///      zostala anulowana bezposrednio na timelocku (sciezka agenta-straznika),
-    ///      Governor raportuje Canceled i execute() jest niemozliwe.
+    /// @dev Proposal state that accounts for the timelock: if a queued operation is
+    ///      cancelled directly on the timelock (the guardian-agent path), the Governor
+    ///      reports Canceled and execute() becomes impossible.
     function state(uint256 proposalId)
         public
         view
@@ -137,7 +137,7 @@ contract DAOGovernorTimelocked is
         return super._cancel(targets, values, calldatas, descriptionHash);
     }
 
-    /// @dev Egzekutorem jest timelock — to on trzyma uprawnienia (owner Treasury).
+    /// @dev The executor is the timelock — it holds the permissions (Treasury owner).
     function _executor()
         internal
         view

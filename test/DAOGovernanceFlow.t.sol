@@ -9,53 +9,53 @@ import {MockERC20} from "../src/mocks/MockERC20.sol";
 import {IVotes} from "@openzeppelin/contracts/governance/utils/IVotes.sol";
 import {IGovernor} from "@openzeppelin/contracts/governance/IGovernor.sol";
 
-/// @notice Etap 1 — test lokalny: potwierdza, ze kontrakty sie kompiluja i podstawowy
-///         cykl zarzadzania (mint -> delegacja -> propozycja -> glos -> wykonanie)
-///         dziala. Sprawdza tez dwie decyzje projektowe: zegar w trybie timestamp
-///         oraz kworum = 1% supply. Golden test samego ATAKU przyjdzie w Etapie 2.
+/// @notice Stage 1 — local test: confirms the contracts compile and the basic governance
+///         cycle (mint -> delegate -> propose -> vote -> execute) works. Also checks two
+///         design decisions: the timestamp clock mode and the 1%-of-supply quorum. The
+///         golden test of the ATTACK itself comes in Stage 2.
 contract DAOGovernanceFlowTest is Test {
     GovToken internal token;
     DAOGovernor internal gov;
     Treasury internal treasury;
     MockERC20 internal asset;
 
-    address internal dao = makeAddr("dao"); // poczatkowy holder calego supply WGOV
-    address internal recipient = makeAddr("recipient"); // odbiorca wyplaty z treasury
+    address internal dao = makeAddr("dao"); // the initial holder of the entire WGOV supply
+    address internal recipient = makeAddr("recipient"); // the treasury payout recipient
 
-    uint256 internal constant SUPPLY = 1_000_000e18; // 1 mln WGOV
-    uint48 internal constant VOTING_DELAY = 1 minutes; // 60s (zegar = timestamp)
+    uint256 internal constant SUPPLY = 1_000_000e18; // 1M WGOV
+    uint48 internal constant VOTING_DELAY = 1 minutes; // 60s (clock = timestamp)
     uint32 internal constant VOTING_PERIOD = 1 hours; // 3600s
-    uint256 internal constant QUORUM_PCT = 1; // 1% supply
+    uint256 internal constant QUORUM_PCT = 1; // 1% of supply
     uint256 internal constant TREASURY_FUNDS = 500_000e6; // 500k mUSD (6 decimals)
 
     function setUp() public {
-        // Zegar Governora = block.timestamp, wiec ustawiamy realistyczny punkt startowy
-        // (domyslne foundry timestamp=1 psuloby lookupy checkpointow w przeszlosci).
+        // The Governor's clock = block.timestamp, so we set a realistic starting point
+        // (foundry's default timestamp=1 would break past-checkpoint lookups).
         vm.warp(1_800_000_000);
 
         token = new GovToken(dao, SUPPLY);
         gov = new DAOGovernor(IVotes(address(token)), VOTING_DELAY, VOTING_PERIOD, QUORUM_PCT);
-        // Wlascicielem skarbca jest Governor — tylko on moze zlecic wyplate.
+        // The treasury owner is the Governor — only it can order a withdrawal.
         treasury = new Treasury(address(gov));
 
         asset = new MockERC20("Mock USD", "mUSD", 6);
         asset.mint(address(treasury), TREASURY_FUNDS);
     }
 
-    // --- Decyzje projektowe ---
+    // --- Design decisions ---
 
     function test_ClockModeIsTimestamp() public view {
-        assertEq(token.clock(), uint48(block.timestamp), "zegar tokena != timestamp");
-        assertEq(gov.clock(), uint48(block.timestamp), "zegar governora != timestamp");
+        assertEq(token.clock(), uint48(block.timestamp), "token clock != timestamp");
+        assertEq(gov.clock(), uint48(block.timestamp), "governor clock != timestamp");
         assertEq(token.CLOCK_MODE(), "mode=timestamp");
-        // Governor dziedziczy tryb zegara z tokena (GovernorVotes czyta token().clock())
+        // The Governor inherits the clock mode from the token (GovernorVotes reads token().clock())
         assertEq(gov.CLOCK_MODE(), "mode=timestamp");
     }
 
     function test_QuorumIsOnePercentOfSupply() public {
-        vm.warp(block.timestamp + 10); // przesuwamy zegar, by pytac o punkt w przeszlosci
-        uint256 expected = SUPPLY * QUORUM_PCT / 100; // 1% z 1 mln = 10_000e18
-        assertEq(gov.quorum(block.timestamp - 1), expected, "kworum != 1% supply");
+        vm.warp(block.timestamp + 10); // move the clock so we can query a past timepoint
+        uint256 expected = SUPPLY * QUORUM_PCT / 100; // 1% of 1M = 10_000e18
+        assertEq(gov.quorum(block.timestamp - 1), expected, "quorum != 1% of supply");
     }
 
     function test_TreasuryOwnedByGovernor() public view {
@@ -63,22 +63,22 @@ contract DAOGovernanceFlowTest is Test {
         assertEq(treasury.balanceOf(address(asset)), TREASURY_FUNDS);
     }
 
-    // --- Pelny cykl zarzadzania ---
+    // --- Full governance cycle ---
 
     function test_FullFlow_MintDelegateProposeVoteExecute() public {
-        uint256 payout = 100_000e6; // ile mUSD wyplacamy propozycja
+        uint256 payout = 100_000e6; // how much mUSD the proposal withdraws
 
-        // 1) DELEGACJA — bez niej saldo NIE liczy sie jako sila glosu.
-        //    dao deleguje na samego siebie -> tworzy checkpoint sily glosu.
+        // 1) DELEGATION — without it a balance does NOT count as voting power.
+        //    dao delegates to itself -> creates a voting-power checkpoint.
         vm.prank(dao);
         token.delegate(dao);
-        assertEq(token.getVotes(dao), SUPPLY, "delegacja nie nadala sily glosu");
+        assertEq(token.getVotes(dao), SUPPLY, "delegation did not grant voting power");
 
-        // Cofamy sie o "krok zegara", by delegacja byla w przeszlosci wzgledem
-        // snapshotu propozycji (Governor porownuje sile glosu z przeszlego timepointu).
+        // Move forward by "one clock tick" so the delegation is in the past relative to
+        // the proposal's snapshot (the Governor compares voting power at a past timepoint).
         vm.warp(block.timestamp + 1);
 
-        // 2) PROPOZYCJA — wyplata z treasury na recipient.
+        // 2) PROPOSAL — a withdrawal from the treasury to recipient.
         (
             address[] memory targets,
             uint256[] memory values,
@@ -91,46 +91,46 @@ contract DAOGovernanceFlowTest is Test {
         assertEq(
             uint8(gov.state(proposalId)),
             uint8(IGovernor.ProposalState.Pending),
-            "po zlozeniu powinno byc Pending"
+            "should be Pending after submission"
         );
 
-        // 3) GLOSOWANIE — czekamy na koniec votingDelay (start glosowania).
+        // 3) VOTING — wait for the end of votingDelay (voting start).
         vm.warp(gov.proposalSnapshot(proposalId) + 1);
         assertEq(
             uint8(gov.state(proposalId)),
             uint8(IGovernor.ProposalState.Active),
-            "po votingDelay powinno byc Active"
+            "should be Active after votingDelay"
         );
 
         vm.prank(dao);
         gov.castVote(proposalId, 1); // 1 = For
 
-        // 4) KONIEC GLOSOWANIA — po deadline stan = Succeeded (kworum + wiekszosc For).
+        // 4) END OF VOTING — after the deadline state = Succeeded (quorum + For majority).
         vm.warp(gov.proposalDeadline(proposalId) + 1);
         assertEq(
             uint8(gov.state(proposalId)),
             uint8(IGovernor.ProposalState.Succeeded),
-            "po deadline powinno byc Succeeded"
+            "should be Succeeded after the deadline"
         );
 
-        // 5) WYKONANIE — brak timelocka, wiec execute dziala natychmiast.
+        // 5) EXECUTION — no timelock, so execute runs immediately.
         uint256 recipientBefore = asset.balanceOf(recipient);
         gov.execute(targets, values, calldatas, keccak256(bytes(description)));
 
-        assertEq(asset.balanceOf(recipient) - recipientBefore, payout, "recipient nie dostal wyplaty");
+        assertEq(asset.balanceOf(recipient) - recipientBefore, payout, "recipient did not get the payout");
         assertEq(
             treasury.balanceOf(address(asset)),
             TREASURY_FUNDS - payout,
-            "saldo treasury nie spadlo o wyplate"
+            "treasury balance did not drop by the payout"
         );
         assertEq(
             uint8(gov.state(proposalId)),
             uint8(IGovernor.ProposalState.Executed),
-            "po execute powinno byc Executed"
+            "should be Executed after execute"
         );
     }
 
-    /// @dev Buduje propozycje: Treasury.withdraw(asset, recipient, amount).
+    /// @dev Builds the proposal: Treasury.withdraw(asset, recipient, amount).
     function _buildWithdrawProposal(uint256 amount)
         internal
         view
@@ -148,6 +148,6 @@ contract DAOGovernanceFlowTest is Test {
         targets[0] = address(treasury);
         values[0] = 0;
         calldatas[0] = abi.encodeCall(Treasury.withdraw, (address(asset), recipient, amount));
-        description = "Wyplata operacyjna z treasury";
+        description = "Operational treasury payout";
     }
 }

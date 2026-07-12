@@ -8,24 +8,24 @@ import {Treasury} from "../src/Treasury.sol";
 import {MockERC20} from "../src/mocks/MockERC20.sol";
 import {IVotes} from "@openzeppelin/contracts/governance/utils/IVotes.sol";
 
-/// @notice Etap 2 — deploy podatnego DAO na Arc Testnet.
-/// Kolejnosc: GovToken -> DAOGovernor(token) -> Treasury(governor) -> MockERC20 (aktywo).
-/// Nastepnie dystrybucja WGOV do ról i zasilenie skarbca aktywem.
+/// @notice Stage 2 — deploy the vulnerable DAO on Arc Testnet.
+/// Order: GovToken -> DAOGovernor(token) -> Treasury(governor) -> MockERC20 (asset).
+/// Then distribute WGOV to the roles and fund the treasury with the asset.
 ///
-/// Uruchomienie (broadcast):
+/// Run (broadcast):
 ///   forge script script/DeployDAO.s.sol:DeployDAO --rpc-url arc --broadcast
 contract DeployDAO is Script {
-    // Parametry DAO (odtwarzaja podatnosc klasy BONK)
-    uint256 constant SUPPLY = 1_000_000e18; // 1 mln WGOV
-    uint48 constant VOTING_DELAY = 60; // 60 s (zegar = timestamp)
+    // DAO parameters (reproduce the BONK vulnerability class)
+    uint256 constant SUPPLY = 1_000_000e18; // 1M WGOV
+    uint48 constant VOTING_DELAY = 60; // 60 s (clock = timestamp)
     uint32 constant VOTING_PERIOD = 3600; // 1 h
     uint256 constant QUORUM_PCT = 1; // 1 %
 
-    // Dystrybucja: attacker sam przekracza kworum; honest ma 2x tyle, ale jest apatyczny
+    // Distribution: the attacker alone clears quorum; the honest holder has 2x as much but is apathetic
     uint256 constant ATTACKER_ALLOC = 50_000e18; // 5 %
     uint256 constant HONEST_ALLOC = 100_000e18; // 10 %
 
-    uint256 constant TREASURY_FUNDS = 1_000_000e6; // 1 mln mUSD (6 decimals)
+    uint256 constant TREASURY_FUNDS = 1_000_000e6; // 1M mUSD (6 decimals)
 
     function run() external {
         uint256 deployerPk = vm.envUint("PRIVATE_KEY");
@@ -35,21 +35,21 @@ contract DeployDAO is Script {
 
         vm.startBroadcast(deployerPk);
 
-        // 1) Token glosujacy — caly supply trafia do deployera, potem rozdajemy.
+        // 1) Voting token — the whole supply goes to the deployer, then we hand it out.
         GovToken token = new GovToken(deployer, SUPPLY);
 
-        // 2) Governor — kworum 1%, brak timelocka. Zegar dziedziczy z tokena (timestamp).
+        // 2) Governor — 1% quorum, no timelock. The clock is inherited from the token (timestamp).
         DAOGovernor gov =
             new DAOGovernor(IVotes(address(token)), VOTING_DELAY, VOTING_PERIOD, QUORUM_PCT);
 
-        // 3) Skarbiec — wlascicielem jest Governor (tylko on wyplaca).
+        // 3) Treasury — the owner is the Governor (only it can withdraw).
         Treasury treasury = new Treasury(address(gov));
 
-        // 4) Aktywo skarbca (pelna kontrola — wlasny MockERC20 zamiast realnego USDC).
+        // 4) Treasury asset (full control — our own MockERC20 instead of real USDC).
         MockERC20 asset = new MockERC20("Mock USD", "mUSD", 6);
         asset.mint(address(treasury), TREASURY_FUNDS);
 
-        // 5) Dystrybucja sily glosu do ról.
+        // 5) Distribute voting power to the roles.
         token.transfer(attacker, ATTACKER_ALLOC);
         token.transfer(honest, HONEST_ALLOC);
 

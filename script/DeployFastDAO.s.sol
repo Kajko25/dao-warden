@@ -8,9 +8,9 @@ import {Treasury} from "../src/Treasury.sol";
 import {MockERC20} from "../src/mocks/MockERC20.sol";
 import {IVotes} from "@openzeppelin/contracts/governance/utils/IVotes.sol";
 
-/// @notice "Szybki" wariant DAO do iterowania Etapow 5-7: identyczna podatnosc jak
-/// produkcyjny, ale votingDelay 5s + votingPeriod 30s -> pelny cykl ataku ~35s zamiast ~1h.
-/// Realistyczny wariant (60s/3600s) zostaje na finalny pokaz dla komisji.
+/// @notice A "fast" DAO variant for iterating Stages 5-7: the same vulnerability as the
+/// production one, but votingDelay 5s + votingPeriod 30s -> a full attack cycle of ~35s
+/// instead of ~1h. The realistic variant (60s/3600s) is kept for the final committee demo.
 ///
 ///   forge script script/DeployFastDAO.s.sol:DeployFastDAO --rpc-url arc --broadcast
 contract DeployFastDAO is Script {

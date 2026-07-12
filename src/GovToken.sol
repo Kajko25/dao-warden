@@ -6,18 +6,19 @@ import {ERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20P
 import {ERC20Votes} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Votes.sol";
 import {Nonces} from "@openzeppelin/contracts/utils/Nonces.sol";
 
-/// @title GovToken — token glosujacy DAO (ERC20Votes)
-/// @notice Token nadaje sile glosu. ERC20Votes zapisuje "checkpointy": migawki
-///         (timepoint => sila glosu adresu). Governor przy tworzeniu propozycji
-///         robi snapshot na konkretny timepoint i kazdy glosuje sila z tej migawki,
-///         a nie biezaca — dlatego kupno tokenow PO snapshocie nie wplywa na
-///         trwajaca propozycje (ale wplywa na nastepna — tak dzialal atak BONK).
-/// @dev    UWAGA na checkpointy: sila glosu nie aktualizuje sie automatycznie przy
-///         transferze. Adres musi najpierw wywolac `delegate(...)` (choćby na
-///         samego siebie), zeby jego saldo w ogole liczylo sie jako glosy.
+/// @title GovToken — the DAO voting token (ERC20Votes)
+/// @notice The token grants voting power. ERC20Votes stores "checkpoints": snapshots
+///         (timepoint => an address's voting power). When a proposal is created the
+///         Governor snapshots a specific timepoint, and everyone votes with the power
+///         from that snapshot, not the current one — so buying tokens AFTER the snapshot
+///         does not affect an ongoing proposal (but it affects the next one — that is how
+///         the BONK attack worked).
+/// @dev    NOTE on checkpoints: voting power does not update automatically on transfer.
+///         An address must first call `delegate(...)` (even to itself) for its balance to
+///         count as votes at all.
 contract GovToken is ERC20, ERC20Permit, ERC20Votes {
-    /// @param initialHolder adres, ktory dostaje caly poczatkowy supply
-    /// @param initialSupply calkowity supply (w jednostkach bazowych, 18 decimals)
+    /// @param initialHolder the address that receives the entire initial supply
+    /// @param initialSupply the total supply (in base units, 18 decimals)
     constructor(address initialHolder, uint256 initialSupply)
         ERC20("DAO Warden Gov Token", "WGOV")
         ERC20Permit("DAO Warden Gov Token")
@@ -25,11 +26,11 @@ contract GovToken is ERC20, ERC20Permit, ERC20Votes {
         _mint(initialHolder, initialSupply);
     }
 
-    // --- Zegar: tryb TIMESTAMP zamiast domyslnego numeru bloku ---
-    // Na Arc blok trwa ~0.5s, wiec liczenie okresow w blokach jest niewygodne i
-    // zalezne od zmiennego czasu bloku. Timestamp daje okresy w sekundach.
-    // Token i Governor MUSZA miec ten sam zegar — Governor (GovernorVotes) czyta
-    // token().clock(), wiec wystarczy nadpisac to tutaj.
+    // --- Clock: TIMESTAMP mode instead of the default block number ---
+    // On Arc a block lasts ~0.5s, so counting periods in blocks is awkward and depends
+    // on the variable block time. A timestamp gives periods in seconds.
+    // The token and the Governor MUST share the same clock — the Governor (GovernorVotes)
+    // reads token().clock(), so overriding it here is enough.
 
     function clock() public view override returns (uint48) {
         return uint48(block.timestamp);
@@ -40,8 +41,8 @@ contract GovToken is ERC20, ERC20Permit, ERC20Votes {
         return "mode=timestamp";
     }
 
-    // --- Override'y wymagane przez diament dziedziczenia (ERC20 + Permit + Votes) ---
-    // Oba rodzice definiuja _update / nonces; Solidity wymaga jawnego rozstrzygniecia.
+    // --- Overrides required by the inheritance diamond (ERC20 + Permit + Votes) ---
+    // Both parents define _update / nonces; Solidity requires explicit resolution.
 
     function _update(address from, address to, uint256 value)
         internal

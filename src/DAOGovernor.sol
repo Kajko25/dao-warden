@@ -10,15 +10,15 @@ import {GovernorVotesQuorumFraction} from
     "@openzeppelin/contracts/governance/extensions/GovernorVotesQuorumFraction.sol";
 import {IVotes} from "@openzeppelin/contracts/governance/utils/IVotes.sol";
 
-/// @title DAOGovernor — CELOWO PODATNY Governor (odtwarza klase podatnosci BONK)
-/// @notice Trzy decyzje projektowe skladaja sie na podatnosc:
-///         1. Kworum ~1% supply (GovernorVotesQuorumFraction, numerator=1, denom=100)
-///            -> propozycja przechodzi przy skrajnie niskiej frekwencji.
-///         2. proposalThreshold = 0 -> KAZDY moze zlozyc propozycje, bez progu tokenow.
-///         3. BRAK timelocka (nie dziedziczymy GovernorTimelockControl) -> po
-///            zakonczeniu glosowania `execute` dziala natychmiast, zero okna obronnego.
-/// @dev    Zegar dziedziczy z tokena (GovernorVotes.clock() czyta token().clock()),
-///         a nasz GovToken jest w trybie timestamp -> votingDelay/votingPeriod w SEKUNDACH.
+/// @title DAOGovernor — a DELIBERATELY VULNERABLE Governor (reproduces the BONK vulnerability class)
+/// @notice Three design decisions combine to create the vulnerability:
+///         1. Quorum ~1% of supply (GovernorVotesQuorumFraction, numerator=1, denom=100)
+///            -> a proposal passes at extremely low turnout.
+///         2. proposalThreshold = 0 -> ANYONE can submit a proposal, with no token threshold.
+///         3. NO timelock (we do not inherit GovernorTimelockControl) -> once voting ends
+///            `execute` runs immediately, with zero defense window.
+/// @dev    The clock is inherited from the token (GovernorVotes.clock() reads token().clock()),
+///         and our GovToken is in timestamp mode -> votingDelay/votingPeriod are in SECONDS.
 contract DAOGovernor is
     Governor,
     GovernorSettings,
@@ -26,11 +26,11 @@ contract DAOGovernor is
     GovernorVotes,
     GovernorVotesQuorumFraction
 {
-    /// @param token token glosujacy (ERC20Votes)
-    /// @param votingDelaySec  ile sekund od zlozenia propozycji do startu glosowania
-    ///                        (moment snapshotu sily glosu)
-    /// @param votingPeriodSec ile sekund trwa glosowanie
-    /// @param quorumPercent   procent supply potrzebny na kworum (np. 1 = 1%)
+    /// @param token          the voting token (ERC20Votes)
+    /// @param votingDelaySec  seconds from proposal submission to the voting start
+    ///                        (the moment of the voting-power snapshot)
+    /// @param votingPeriodSec how many seconds voting lasts
+    /// @param quorumPercent   the percent of supply required for quorum (e.g. 1 = 1%)
     constructor(
         IVotes token,
         uint48 votingDelaySec,
@@ -43,7 +43,7 @@ contract DAOGovernor is
         GovernorVotesQuorumFraction(quorumPercent)
     {}
 
-    // --- Override'y wymagane przy laczeniu rozszerzen ---
+    // --- Overrides required when combining extensions ---
 
     function votingDelay() public view override(Governor, GovernorSettings) returns (uint256) {
         return super.votingDelay();
