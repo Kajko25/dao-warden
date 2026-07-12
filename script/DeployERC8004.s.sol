@@ -14,7 +14,7 @@ import {ValidationRegistry} from "../src/erc8004/ValidationRegistry.sol";
 ///   forge script script/DeployERC8004.s.sol:DeployERC8004 --rpc-url arc --broadcast
 contract DeployERC8004 is Script {
     // AgentCard (docs/agent-card.json) as a CIDv1 raw+sha256 — see docs/agent-card.cid.txt.
-    string constant AGENT_URI = "ipfs://bafkreih3vn4ehc3ilgor6ces6cswjzwmcclapcy6nm34sijklnvlwfqnyu";
+    string constant AGENT_URI = "ipfs://bafkreiehe742yroj73474igxfwrataxzun75dzczrm3gld34kw4errng6i";
 
     // The guarded DAOGovernor (realistic variant, deployed.json) — for the "guards" metadata.
     address constant GUARDED_GOVERNOR = 0x0CbCaa61344Efef42916a7461e1bF2B673Fc4a21;

@@ -1,8 +1,8 @@
-bafkreih3vn4ehc3ilgor6ces6cswjzwmcclapcy6nm34sijklnvlwfqnyu
+bafkreiehe742yroj73474igxfwrataxzun75dzczrm3gld34kw4errng6i
 
 # CIDv1 (raw codec, sha2-256) of the file docs/agent-card.json.
 # agentURI used at ERC-8004 registration:
-#   ipfs://bafkreih3vn4ehc3ilgor6ces6cswjzwmcclapcy6nm34sijklnvlwfqnyu
+#   ipfs://bafkreiehe742yroj73474igxfwrataxzun75dzczrm3gld34kw4errng6i
 #
 # Integrity verification (anyone can recompute it from the file content):
 #   node scripts/ipfs-cid.mjs docs/agent-card.json

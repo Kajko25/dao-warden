@@ -1,12 +1,12 @@
 {
   "type": "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
   "name": "DAO-WARDEN",
-  "description": "Autonomiczny agent-straznik DAO. Wykrywa ataki governance klasy BONK: skup wiekszosci glosow pod propozycje drenujaca skarbiec, przy niskim kworum i bez timelocka (naduzycie legalnego mechanizmu, nie exploit kodu). Laczy deterministyczny scoring ryzyka calldata z warstwa LLM (Claude Haiku), ktora porownuje narracje propozycji z jej realnym dzialaniem. Po wykryciu ataku glosuje NIE oddelegowana sila uczciwych, apatycznych posiadaczy.",
+  "description": "An autonomous DAO guardian agent. It detects BONK-class governance attacks: buying a voting majority behind a treasury-draining proposal, at low quorum and with no timelock (abuse of a legitimate mechanism, not a code exploit). It combines deterministic calldata risk scoring with an LLM layer (Claude Haiku) that compares a proposal's narrative against its real action. On detecting an attack it votes NO with the power delegated by honest, apathetic holders.",
   "services": [
     {
       "name": "guardian",
       "endpoint": "eip155:5042002:0x0CbCaa61344Efef42916a7461e1bF2B673Fc4a21",
-      "description": "Chroniony kontrakt DAOGovernor na Arc Testnet"
+      "description": "The guarded DAOGovernor contract on Arc Testnet"
     }
   ],
   "x402Support": false,

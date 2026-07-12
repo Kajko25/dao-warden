@@ -95,7 +95,7 @@ LLM layer. The ERC-8004 registries are independent of `DEPLOYED_FILE` — always
 **ERC-8004 registries (Stage 6, redeployed in English 2026-07-12):** IdentityRegistry
 `0x103D690aAc91D88adc01701431dB7e65a9b915fd` · ValidationRegistry
 `0x15E965CE0eDa0668464E41D88bca31212b96D33F`. Agent: agentId 1, owner =
-agent wallet `0x0bDE…BEFC`, AgentCard `ipfs://bafkreih3vn4ehc3ilgor6ces6cswjzwmcclapcy6nm34sijklnvlwfqnyu`
+agent wallet `0x0bDE…BEFC`, AgentCard `ipfs://bafkreiehe742yroj73474igxfwrataxzun75dzczrm3gld34kw4errng6i`
 (file `docs/agent-card.json`; CID genuine but unpinned — see `docs/agent-card.cid.txt`).
 Inventory and txs in `docs/deployed-erc8004.json`. (The first Stage 6 deploy — Identity `0x5a33…4D36`,
 Validation `0xb7f7…2dE4` — is abandoned; its audited record was in Polish. See Session 3 below.)
@@ -210,7 +210,7 @@ against the current version.
 
 **AgentCard + IPFS.** `docs/agent-card.json` (format `registration-v1`: name/description/services/
 supportedTrust). Computed a **genuine CIDv1 (raw+sha256)** with `scripts/ipfs-cid.mjs` →
-`bafkreih3vn4ehc3ilgor6ces6cswjzwmcclapcy6nm34sijklnvlwfqnyu`. **Honestly:** no pinning credentials in
+`bafkreiehe742yroj73474igxfwrataxzun75dzczrm3gld34kw4errng6i`. **Honestly:** no pinning credentials in
 this environment — the CID is content-addressed and verifiable from the content, but the file is not
 pinned to a public gateway (a separate hosting step). Documented in `docs/agent-card.cid.txt`.
 
@@ -283,3 +283,10 @@ validator scores 100/100 (validationResponse tx `0xb8e6324419d8764a9b93edc6a7dad
 Integrity re-verified with `cast`: keccak256 of the stored record == on-chain requestHash. The old Polish
 record file was removed; the first registries are simply abandoned on-chain. The proposal `description`
 quoted inside the record stays Polish — it is the real, immutable on-chain WGIP-1 title.
+
+**AgentCard translated to English + on-chain agentURI updated (2026-07-12).** `docs/agent-card.json` was
+Polish and its CID is the on-chain `agentURI`, so we translated the card, recomputed the CID
+(`bafkreiehe742yroj73474igxfwrataxzun75dzczrm3gld34kw4errng6i`), and the agent called
+`IdentityRegistry.setAgentURI(1, …)` (tx `0xc34db186d28a21c162b64537508663806fd1f1b6e9e74b2ada56bfe8579aba65`).
+Verified: `tokenURI(1)` == the recomputed CID of the English file. Also translated `agent/README.md`
+(and updated it through Stage 7) and the agent's `package.json` description.

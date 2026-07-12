@@ -12,7 +12,7 @@
   "agent": {
     "agentId": 1,
     "owner": "0x0bDEb6882AEeFA2E3CcC956FAB425C2c4479BEFC",
-    "agentURI": "ipfs://bafkreih3vn4ehc3ilgor6ces6cswjzwmcclapcy6nm34sijklnvlwfqnyu",
+    "agentURI": "ipfs://bafkreiehe742yroj73474igxfwrataxzun75dzczrm3gld34kw4errng6i",
     "agentCardFile": "docs/agent-card.json",
     "metadata": {
       "framework": "dao-warden",
