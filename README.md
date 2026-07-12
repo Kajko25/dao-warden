@@ -1,5 +1,11 @@
 # DAO-WARDEN
 
+### 🛡️ [**View the visual pitch →**](https://kajko25.github.io/dao-warden/)
+
+A one-page walkthrough of the problem, the two-layer defense, and the on-chain proofs.
+
+---
+
 An AI **guardian agent** on **Arc Testnet** that detects *governance attacks* — attacks where
 someone buys a voting majority and pushes through a proposal that drains the treasury (the EVM
 analogue of the July 2026 BONK DAO attack: a proposal passed at extremely low turnout, with no
