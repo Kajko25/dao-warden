@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "DAO-WARDEN — agent-strażnik wykrywający governance attacks (Etap 3: rdzeń deterministyczny)",
+  "description": "DAO-WARDEN — guardian agent detecting governance attacks (deterministic core + LLM + on-chain reaction)",
   "scripts": {
     "watch": "tsx src/index.ts",
     "scan": "tsx src/scan.ts",
