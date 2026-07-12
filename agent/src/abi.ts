@@ -1,6 +1,6 @@
-// Minimalne ABI potrzebne agentowi (tylko to, co czytamy w Etapie 3).
+// The minimal ABIs the agent needs (only what we read).
 
-// Governor — event ProposalCreated + funkcje odczytu stanu i parametrow.
+// Governor — the ProposalCreated event + functions to read state and parameters.
 export const governorAbi = [
   {
     type: "event",
@@ -23,21 +23,21 @@ export const governorAbi = [
   { type: "function", name: "proposalProposer", stateMutability: "view", inputs: [{ name: "proposalId", type: "uint256" }], outputs: [{ type: "address" }] },
   { type: "function", name: "proposalDeadline", stateMutability: "view", inputs: [{ name: "proposalId", type: "uint256" }], outputs: [{ type: "uint256" }] },
   { type: "function", name: "proposalVotes", stateMutability: "view", inputs: [{ name: "proposalId", type: "uint256" }], outputs: [{ name: "against", type: "uint256" }, { name: "for", type: "uint256" }, { name: "abstain", type: "uint256" }] },
-  // Reakcja agenta (Etap 5): oddanie glosu. support: 0=Against(NIE), 1=For, 2=Abstain.
+  // Agent reaction (Stage 5): casting a vote. support: 0=Against(NO), 1=For, 2=Abstain.
   { type: "function", name: "castVote", stateMutability: "nonpayable", inputs: [{ name: "proposalId", type: "uint256" }, { name: "support", type: "uint8" }], outputs: [{ type: "uint256" }] },
   { type: "function", name: "hasVoted", stateMutability: "view", inputs: [{ name: "proposalId", type: "uint256" }, { name: "account", type: "address" }], outputs: [{ type: "bool" }] },
-  // Cykl propozycji (uzywane przez scenariusz demonstracyjny — role attacker).
+  // Proposal lifecycle (used by the demo scenario — the attacker role).
   { type: "function", name: "propose", stateMutability: "nonpayable", inputs: [{ name: "targets", type: "address[]" }, { name: "values", type: "uint256[]" }, { name: "calldatas", type: "bytes[]" }, { name: "description", type: "string" }], outputs: [{ type: "uint256" }] },
   { type: "function", name: "execute", stateMutability: "payable", inputs: [{ name: "targets", type: "address[]" }, { name: "values", type: "uint256[]" }, { name: "calldatas", type: "bytes[]" }, { name: "descriptionHash", type: "bytes32" }], outputs: [{ type: "uint256" }] },
   { type: "function", name: "hashProposal", stateMutability: "pure", inputs: [{ name: "targets", type: "address[]" }, { name: "values", type: "uint256[]" }, { name: "calldatas", type: "bytes[]" }, { name: "descriptionHash", type: "bytes32" }], outputs: [{ type: "uint256" }] },
-  // Wariant z timelockiem (Etap 7): wygrana propozycja musi byc najpierw zakolejkowana.
+  // Timelocked variant (Stage 7): a won proposal must first be queued.
   { type: "function", name: "queue", stateMutability: "nonpayable", inputs: [{ name: "targets", type: "address[]" }, { name: "values", type: "uint256[]" }, { name: "calldatas", type: "bytes[]" }, { name: "descriptionHash", type: "bytes32" }], outputs: [{ type: "uint256" }] },
   { type: "function", name: "proposalNeedsQueuing", stateMutability: "view", inputs: [{ name: "proposalId", type: "uint256" }], outputs: [{ type: "bool" }] },
   { type: "function", name: "timelock", stateMutability: "view", inputs: [], outputs: [{ type: "address" }] },
 ] as const;
 
-// TimelockController — warstwa obronna Etapu 7. Agent (CANCELLER_ROLE) anuluje
-// zakolejkowana operacje ataku w oknie minDelay.
+// TimelockController — the Stage 7 defense layer. The agent (CANCELLER_ROLE) cancels
+// the queued attack operation in the minDelay window.
 export const timelockAbi = [
   { type: "function", name: "getMinDelay", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },
   { type: "function", name: "hashOperationBatch", stateMutability: "pure", inputs: [{ name: "targets", type: "address[]" }, { name: "values", type: "uint256[]" }, { name: "payloads", type: "bytes[]" }, { name: "predecessor", type: "bytes32" }, { name: "salt", type: "bytes32" }], outputs: [{ type: "bytes32" }] },
@@ -49,10 +49,10 @@ export const timelockAbi = [
   { type: "function", name: "CANCELLER_ROLE", stateMutability: "view", inputs: [], outputs: [{ type: "bytes32" }] },
 ] as const;
 
-// Denominator kworum w OZ GovernorVotesQuorumFraction to stale 100 (procent).
+// The quorum denominator in OZ GovernorVotesQuorumFraction is a constant 100 (percent).
 export const QUORUM_DENOMINATOR = 100n;
 
-// ERC20Votes — sila glosu + supply + delegacja.
+// ERC20Votes — voting power + supply + delegation.
 export const votesTokenAbi = [
   { type: "function", name: "getVotes", stateMutability: "view", inputs: [{ name: "account", type: "address" }], outputs: [{ type: "uint256" }] },
   { type: "function", name: "totalSupply", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },
@@ -62,14 +62,14 @@ export const votesTokenAbi = [
   { type: "function", name: "delegates", stateMutability: "view", inputs: [{ name: "account", type: "address" }], outputs: [{ type: "address" }] },
 ] as const;
 
-// ERC20 (aktywo skarbca) — saldo + metadane.
+// ERC20 (the treasury asset) — balance + metadata.
 export const erc20Abi = [
   { type: "function", name: "balanceOf", stateMutability: "view", inputs: [{ name: "account", type: "address" }], outputs: [{ type: "uint256" }] },
   { type: "function", name: "symbol", stateMutability: "view", inputs: [], outputs: [{ type: "string" }] },
   { type: "function", name: "decimals", stateMutability: "view", inputs: [], outputs: [{ type: "uint8" }] },
 ] as const;
 
-// Treasury — sygnatura, ktora agent rozpoznaje jako ruch srodkow ze skarbca.
+// Treasury — the signature the agent recognizes as a fund movement out of the treasury.
 export const treasuryAbi = [
   {
     type: "function",

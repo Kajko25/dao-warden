@@ -1,19 +1,19 @@
-// Sygnal reputacji (Etap 6): niezalezny walidator ocenia zlozona decyzje agenta.
-// response 0-100 (0 = decyzja bledna, 100 = w pelni potwierdzona). getSummary
-// agreguje oceny w reputacje agenta.
+// Reputation signal (Stage 6): an independent validator scores the agent's filed decision.
+// response 0-100 (0 = the decision is wrong, 100 = fully confirmed). getSummary aggregates
+// the scores into the agent's reputation.
 import { keccak256, toBytes, type Hex } from "viem";
 import { publicClient } from "./config.js";
 import { erc8004, validationRegistryAbi, walletClientFor } from "./erc8004.js";
 import { ipfsUriForContent } from "./cid.js";
 
-/// Walidator odpowiada na zadanie walidacji. Zwraca hash tx.
+/// The validator answers a validation request. Returns the tx hash.
 export async function respondToDecision(
   requestHash: Hex,
   response: number, // 0-100
   note: string,
   tag: string,
 ): Promise<Hex> {
-  if (response < 0 || response > 100) throw new Error("response musi byc 0-100");
+  if (response < 0 || response > 100) throw new Error("response must be 0-100");
   const responseURI = ipfsUriForContent(note);
   const responseHash = keccak256(toBytes(note));
 
@@ -33,7 +33,7 @@ export interface Reputation {
   average: number;
 }
 
-/// Agregat reputacji agenta (wszyscy walidatorzy, dowolny tag).
+/// The agent's reputation aggregate (all validators, any tag).
 export async function readReputation(tag = ""): Promise<Reputation> {
   const [count, average] = (await publicClient.readContract({
     address: erc8004.validationRegistry,
@@ -44,7 +44,7 @@ export async function readReputation(tag = ""): Promise<Reputation> {
   return { count, average };
 }
 
-/// Ostatnia (ODPOWIEDZIANA) ocena dla danego zadania.
+/// The latest (ANSWERED) score for a given request.
 export async function readStatus(requestHash: Hex) {
   return publicClient.readContract({
     address: erc8004.validationRegistry,

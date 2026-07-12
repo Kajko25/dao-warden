@@ -1,16 +1,16 @@
-// Etap 6 — demonstracja end-to-end: TOZSAMOSC + AUDYT + REPUTACJA (ERC-8004).
+// Stage 6 — end-to-end demonstration: IDENTITY + AUDIT + REPUTATION (ERC-8004).
 //
-// Scenariusz (bez nowej transakcji na DAO — audytujemy PRAWDZIWA decyzje agenta o
-// istniejacym ataku WGIP-1 z Etapu 2):
-//   1. Odczyt tozsamosci agenta z IdentityRegistry (agentId, portfel, metadane, AgentCard).
-//   2. Agent ocenia realna propozycje ataku swoim pelnym potokiem (rdzen + LLM + decyzja).
-//   3. Agent SKLADA rekord decyzji do ValidationRegistry (validationRequest) —
-//      audytowalny slad: co oflagowal i dlaczego, z kryptograficznym zobowiazaniem.
-//   4. Niezalezny WALIDATOR ocenia decyzje (validationResponse 0-100) — sygnal reputacji.
-//   5. Odczyt agregatu reputacji agenta (getSummary) i statusu walidacji.
+// Scenario (no new transaction on the DAO — we audit the agent's REAL decision about the
+// existing WGIP-1 attack from Stage 2):
+//   1. Read the agent's identity from IdentityRegistry (agentId, wallet, metadata, AgentCard).
+//   2. The agent scores the real attack proposal with its full pipeline (core + LLM + decision).
+//   3. The agent FILES a decision record to the ValidationRegistry (validationRequest) —
+//      an auditable trail: what it flagged and why, with a cryptographic commitment.
+//   4. An independent VALIDATOR scores the decision (validationResponse 0-100) — a reputation signal.
+//   5. Read the agent's reputation aggregate (getSummary) and the validation status.
 //
-// Uruchomienie: npm run stage6            (realistyczny DAO — ma atak WGIP-1)
-//   ewentualnie: SCAN_BLOCKS=60000 npm run stage6
+// Run: npm run stage6            (the realistic DAO — it has the WGIP-1 attack)
+//   optionally: SCAN_BLOCKS=60000 npm run stage6
 import { type Address, type Hex } from "viem";
 import { publicClient, addresses } from "./config.js";
 import { governorAbi } from "./abi.js";
@@ -31,7 +31,7 @@ interface Candidate {
   description: string;
 }
 
-// Znajduje najgrozniejsza propozycje na chronionym Governorze (ocena rdzeniem).
+// Finds the most dangerous proposal on the guarded Governor (scored by the core).
 async function findRiskiestProposal(): Promise<Candidate | null> {
   const latest = await publicClient.getBlockNumber();
   const span = BigInt(process.env.SCAN_BLOCKS ?? "40000");
@@ -62,65 +62,65 @@ async function findRiskiestProposal(): Promise<Candidate | null> {
 }
 
 async function main() {
-  console.log("\n🛡️  DAO-WARDEN — Etap 6: tozsamosc ERC-8004 + audyt decyzji + reputacja\n");
+  console.log("\n🛡️  DAO-WARDEN — Stage 6: ERC-8004 identity + decision audit + reputation\n");
 
-  // --- 1) Tozsamosc agenta ---
-  console.log("1) Tozsamosc agenta (IdentityRegistry ERC-8004)");
+  // --- 1) Agent identity ---
+  console.log("1) Agent identity (ERC-8004 IdentityRegistry)");
   const id = await readAgentIdentity();
-  console.log(`   agentId globalny : ${id.globalId}`);
-  console.log(`   wlasciciel/portfel: ${id.owner}`);
+  console.log(`   global agentId   : ${id.globalId}`);
+  console.log(`   owner/wallet     : ${id.owner}`);
   console.log(`   AgentCard        : ${id.agentURI}`);
   console.log(`   framework        : ${id.framework}`);
-  console.log(`   chroni Governor  : ${id.guards}`);
-  console.log(`   walidator        : ${id.validator}\n`);
+  console.log(`   guards Governor  : ${id.guards}`);
+  console.log(`   validator        : ${id.validator}\n`);
 
-  // --- 2) Realna decyzja agenta o propozycji ataku ---
-  console.log(`2) Agent ocenia propozycje na chronionym Governorze (${addresses.governor})`);
+  // --- 2) The agent's real decision about the attack proposal ---
+  console.log(`2) The agent scores a proposal on the guarded Governor (${addresses.governor})`);
   const cand = await findRiskiestProposal();
   if (!cand) {
-    console.log("   Brak propozycji w oknie skanu — zwieksz SCAN_BLOCKS albo uruchom na wariancie z atakiem.");
+    console.log("   No proposals in the scan window — increase SCAN_BLOCKS or run against a variant with the attack.");
     process.exit(1);
   }
   if (llmAvailable()) {
     cand.llm = await analyzeNarrative(cand.decoded).catch(() => undefined);
   }
   const decision = decide(cand.report, cand.llm);
-  console.log(`   propozycja …${cand.decoded.proposalId.toString().slice(-6)}: "${cand.description}"`);
-  console.log(`   rdzen: ${cand.report.level} ${cand.report.score}/100` + (cand.llm ? ` | LLM: ${cand.llm.verdict} ${cand.llm.mismatchScore}/100` : ""));
-  console.log(`   DECYZJA: ${decision.action}`);
+  console.log(`   proposal …${cand.decoded.proposalId.toString().slice(-6)}: "${cand.description}"`);
+  console.log(`   core: ${cand.report.level} ${cand.report.score}/100` + (cand.llm ? ` | LLM: ${cand.llm.verdict} ${cand.llm.mismatchScore}/100` : ""));
+  console.log(`   DECISION: ${decision.action}`);
   for (const r of decision.reasons) console.log(`     - ${r}`);
   console.log();
 
-  // --- 3) Agent sklada decyzje do walidacji (audytowalny slad) ---
-  console.log("3) Agent zapisuje decyzje do ValidationRegistry (validationRequest)");
+  // --- 3) The agent files the decision for validation (an auditable trail) ---
+  console.log("3) The agent records the decision in the ValidationRegistry (validationRequest)");
   const record = buildDecisionRecord(cand.decoded.proposalId, cand.description, id.guards ?? addresses.governor, cand.report, decision, cand.llm);
   const filed = await fileDecision(record);
   console.log(`   requestHash: ${filed.requestHash}`);
   console.log(`   requestURI : ${filed.requestURI}`);
-  console.log(`   rekord     : ${filed.recordPath}`);
+  console.log(`   record     : ${filed.recordPath}`);
   console.log(`   tx         : ${filed.txHash}\n`);
 
-  // --- 4) Walidator ocenia decyzje (sygnal reputacji) ---
-  console.log("4) Walidator ocenia decyzje (validationResponse)");
-  // Niezalezna weryfikacja: decyzja poprawna, gdy agent oflagowal realny drenaz i glosuje NIE.
+  // --- 4) The validator scores the decision (reputation signal) ---
+  console.log("4) The validator scores the decision (validationResponse)");
+  // Independent verification: the decision is correct when the agent flagged a real drain and votes NO.
   const correct = decision.action === "VOTE_NO" && (cand.report.level === "CRITICAL" || cand.report.level === "HIGH");
   const score = correct ? 100 : decision.action === "VOTE_NO" ? 70 : 20;
   const note = correct
-    ? `Potwierdzono: propozycja ${cand.decoded.proposalId} to drenaz skarbca (klasa BONK); glos NIE prawidlowy.`
-    : `Ocena decyzji ${decision.action} dla propozycji ${cand.decoded.proposalId}.`;
+    ? `Confirmed: proposal ${cand.decoded.proposalId} is a treasury drain (BONK class); the NO vote is correct.`
+    : `Scoring the ${decision.action} decision for proposal ${cand.decoded.proposalId}.`;
   const vtx = await respondToDecision(filed.requestHash, score, note, "attack-defense");
-  console.log(`   ocena: ${score}/100 (tag attack-defense)`);
+  console.log(`   score: ${score}/100 (tag attack-defense)`);
   console.log(`   tx   : ${vtx}\n`);
 
-  // --- 5) Odczyt reputacji i statusu ---
-  console.log("5) Agregat reputacji agenta (getSummary) + status walidacji");
+  // --- 5) Read reputation and status ---
+  console.log("5) The agent's reputation aggregate (getSummary) + validation status");
   const rep = await readReputation();
   const status = await readStatus(filed.requestHash) as readonly [Address, bigint, number, Hex, string, bigint];
-  console.log(`   reputacja: ${rep.count} ocen, srednia ${rep.average}/100`);
-  console.log(`   status tego zadania: response=${status[2]}, tag="${status[4]}", walidator=${status[0]}\n`);
+  console.log(`   reputation: ${rep.count} review(s), average ${rep.average}/100`);
+  console.log(`   status of this request: response=${status[2]}, tag="${status[4]}", validator=${status[0]}\n`);
 
-  console.log("✅ Etap 6 zakonczony: agent ma zweryfikowalna tozsamosc ERC-8004, kazda decyzja");
-  console.log("   zostawia kryptograficzny slad on-chain, a niezalezny walidator buduje jego reputacje.");
+  console.log("✅ Stage 6 complete: the agent has a verifiable ERC-8004 identity, every decision");
+  console.log("   leaves a cryptographic on-chain trail, and an independent validator builds its reputation.");
 }
 
-main().catch((e) => { console.error("Blad demo Etap 6:", e); process.exit(1); });
+main().catch((e) => { console.error("Stage 6 demo error:", e); process.exit(1); });

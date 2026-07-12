@@ -1,6 +1,6 @@
-// Tryb NASŁUCHU (na żywo): agent obserwuje Governor i na każdą nową propozycję
-// (ProposalCreated) natychmiast ją dekoduje i ocenia ryzyko. Rdzeń deterministyczny
-// Etapu 3 — jeszcze bez reakcji (głosowania); ta przyjdzie w Etapie 5.
+// WATCH mode (live): the agent observes the Governor and, for every new proposal
+// (ProposalCreated), immediately decodes it and scores risk. The Stage 3 deterministic
+// core — still without a reaction (voting); that comes in Stage 5.
 import { type Address, type Hex } from "viem";
 import { publicClient, addresses } from "./config.js";
 import { governorAbi } from "./abi.js";
@@ -13,16 +13,16 @@ async function main() {
   const chainId = await publicClient.getChainId();
   const start = await publicClient.getBlockNumber();
   const useLlm = llmAvailable();
-  console.log(`\n🛡️  DAO-WARDEN nasłuchuje (chainId ${chainId}, od bloku ${start})`);
+  console.log(`\n🛡️  DAO-WARDEN is watching (chainId ${chainId}, from block ${start})`);
   console.log(`    Governor: ${addresses.governor}`);
   console.log(`    Treasury: ${addresses.treasury}`);
-  console.log(`    warstwa LLM: ${useLlm ? "AKTYWNA (Claude Haiku)" : "wylaczona (brak ANTHROPIC_API_KEY)"}\n`);
+  console.log(`    LLM layer: ${useLlm ? "ACTIVE (Claude Haiku)" : "disabled (no ANTHROPIC_API_KEY)"}\n`);
 
   publicClient.watchContractEvent({
     address: addresses.governor,
     abi: governorAbi,
     eventName: "ProposalCreated",
-    poll: true, // Arc: polling zamiast trwałych filtrów
+    poll: true, // Arc: polling instead of persistent filters
     pollingInterval: 3_000,
     onError: (err) => console.error("watch error:", err.message),
     onLogs: async (logs) => {
@@ -32,7 +32,7 @@ async function main() {
           values: readonly bigint[]; calldatas: readonly Hex[];
           voteStart: bigint; voteEnd: bigint; description: string;
         };
-        console.log(`\n⚡ Nowa propozycja wykryta w bloku ${log.blockNumber}`);
+        console.log(`\n⚡ New proposal detected in block ${log.blockNumber}`);
         const decoded = decodeProposal({
           proposalId: a.proposalId, proposer: a.proposer, description: a.description,
           voteStart: a.voteStart, voteEnd: a.voteEnd,
@@ -45,12 +45,12 @@ async function main() {
             try {
               llm = await analyzeNarrative(decoded);
             } catch (e) {
-              console.error("   (warstwa LLM pominieta:", (e as Error).message, ")");
+              console.error("   (LLM layer skipped:", (e as Error).message, ")");
             }
           }
           printReport(decoded, report, llm);
         } catch (e) {
-          console.error("Blad oceny propozycji:", (e as Error).message);
+          console.error("Proposal scoring error:", (e as Error).message);
         }
       }
     },
@@ -58,6 +58,6 @@ async function main() {
 }
 
 main().catch((e) => {
-  console.error("Blad startu agenta:", e);
+  console.error("Agent startup error:", e);
   process.exit(1);
 });

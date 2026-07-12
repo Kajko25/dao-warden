@@ -1,7 +1,7 @@
-// Liczy PRAWDZIWY CIDv1 (kodek raw, sha2-256) z bajtow — tak jak
-// `ipfs add --cid-version 1 --raw-leaves` dla tresci w jednym bloku (<256 KiB).
-// Content-addressing: kazdy przeliczy CID z tresci rekordu i potwierdzi integralnosc.
-// (Mirror scripts/ipfs-cid.mjs, uzywany po stronie agenta dla rekordow decyzji.)
+// Computes a GENUINE CIDv1 (raw codec, sha2-256) from bytes — just like
+// `ipfs add --cid-version 1 --raw-leaves` for single-block content (<256 KiB).
+// Content-addressing: anyone can recompute the CID from the record content and confirm integrity.
+// (Mirror of scripts/ipfs-cid.mjs, used on the agent side for decision records.)
 import { createHash } from "node:crypto";
 
 const ALPHABET = "abcdefghijklmnopqrstuvwxyz234567";
@@ -17,7 +17,7 @@ function base32(buf: Uint8Array): string {
   return out;
 }
 
-/// Zwraca "ipfs://<cidv1>" dla podanego tekstu (UTF-8).
+/// Returns "ipfs://<cidv1>" for the given text (UTF-8).
 export function ipfsUriForContent(content: string): string {
   const digest = createHash("sha256").update(content, "utf8").digest();
   const cidBytes = Buffer.concat([Buffer.from([0x01, 0x55, 0x12, 0x20]), digest]);

@@ -1,7 +1,7 @@
-// Audytowalny slad decyzji (Etap 6): agent zapisuje KAZDA ocene propozycji jako
-// validationRequest w ValidationRegistry. requestHash = keccak256 kanonicznego
-// rekordu decyzji (zobowiazanie — decyzji nie da sie pozniej po cichu zmienic),
-// requestURI = ipfs://<CID> tego samego rekordu.
+// Auditable decision trail (Stage 6): the agent records EVERY proposal evaluation as a
+// validationRequest in the ValidationRegistry. requestHash = keccak256 of the canonical
+// decision record (a commitment — the decision cannot be silently changed later),
+// requestURI = ipfs://<CID> of the same record.
 import { mkdirSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
@@ -27,8 +27,8 @@ export interface DecisionRecord {
   decision: { action: string; reasons: string[] };
 }
 
-/// Kanoniczny JSON (klucze posortowane rekurencyjnie) — te same bajty hashujemy,
-/// zapisujemy i adresujemy przez CID, wiec hash i URI sa deterministyczne.
+/// Canonical JSON (keys sorted recursively) — we hash, store, and CID-address the same
+/// bytes, so the hash and the URI are deterministic.
 function canonical(obj: unknown): string {
   const sort = (v: any): any => {
     if (Array.isArray(v)) return v.map(sort);
@@ -67,13 +67,13 @@ export interface FiledDecision {
   recordPath: string;
 }
 
-/// Agent (wlasciciel agentId) sklada rekord decyzji do walidacji. Zwraca hash/URI/tx.
+/// The agent (owner of agentId) files a decision record for validation. Returns hash/URI/tx.
 export async function fileDecision(record: DecisionRecord): Promise<FiledDecision> {
   const json = canonical(record);
   const requestHash = keccak256(toBytes(json));
   const requestURI = ipfsUriForContent(json);
 
-  // Zapis lokalny rekordu (content-addressowany; nieprzypiety do publicznego IPFS).
+  // Local write of the record (content-addressed; not pinned to public IPFS).
   mkdirSync(decisionsDir, { recursive: true });
   const recordPath = join(decisionsDir, `${requestHash.slice(2, 18)}.json`);
   writeFileSync(recordPath, json + "\n");

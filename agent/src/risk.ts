@@ -1,5 +1,5 @@
-// Scoring ryzyka — WYLACZNIE deterministyczne reguly (bez LLM; to przyjdzie w Etapie 4).
-// Kazda regula to jawny sygnal z waga; suma daje wynik 0..100 i poziom ryzyka.
+// Risk scoring — ONLY deterministic rules (no LLM; that comes in Stage 4).
+// Each rule is an explicit weighted signal; the sum gives a 0..100 score and a risk level.
 import { formatUnits, type Address } from "viem";
 import { publicClient, addresses } from "./config.js";
 import { governorAbi, votesTokenAbi, erc20Abi, QUORUM_DENOMINATOR } from "./abi.js";
@@ -21,20 +21,21 @@ export interface RiskReport {
   facts: Record<string, string>;
 }
 
-// Kontekst on-chain potrzebny do oceny (czytany w momencie wykrycia propozycji).
+// The on-chain context needed for scoring (read at the moment the proposal is detected).
 interface Context {
   totalSupply: bigint;
-  quorumThreshold: bigint; // ile glosow trzeba na kworum
-  proposerVotes: bigint; // biezaca sila glosu proponujacego
+  quorumThreshold: bigint; // how many votes quorum requires
+  proposerVotes: bigint; // the proposer's current voting power
   assetDecimals: number;
   assetSymbol: string;
-  // saldo skarbca dla aktywa uzytego w withdraw (klucz = adres aktywa, lowercase)
+  // the treasury balance for the asset used in withdraw (key = asset address, lowercase)
   treasuryBalances: Map<string, bigint>;
 }
 
 async function gatherContext(p: DecodedProposal, atBlock?: bigint): Promise<Context> {
-  // Agent ocenia stan Z MOMENTU powstania propozycji (blok jej utworzenia), nie biezacy —
-  // inaczej po drenazu saldo skarbca = 0 i regula "% skarbca" falszywie spada do zera.
+  // The agent evaluates state AT the proposal's creation moment (its creation block), not the
+  // current one — otherwise, after the drain, the treasury balance = 0 and the "% of treasury"
+  // rule falsely drops to zero.
   const block = atBlock !== undefined ? { blockNumber: atBlock } : {};
   const [totalSupply, quorumNumerator, proposerVotes] = await Promise.all([
     publicClient.readContract({ address: addresses.token, abi: votesTokenAbi, functionName: "totalSupply", ...block }),
@@ -82,12 +83,12 @@ export async function scoreProposal(p: DecodedProposal, atBlock?: bigint): Promi
 
   const drains = p.intents.filter(isTreasuryDrain);
 
-  // Reguła 1: propozycja w ogole rusza srodki ze skarbca.
+  // Rule 1: the proposal moves funds out of the treasury at all.
   if (drains.length > 0) {
-    signals.push({ code: "TREASURY_SPEND", weight: 30, detail: `${drains.length} wyplata(y) ze skarbca` });
+    signals.push({ code: "TREASURY_SPEND", weight: 30, detail: `${drains.length} treasury withdrawal(s)` });
   }
 
-  // Reguła 2: jaka czesc salda skarbca wyprowadza (per aktywo, bierzemy max).
+  // Rule 2: what fraction of the treasury balance it moves out (per asset, take the max).
   let maxFraction = 0;
   for (const intent of drains) {
     if (intent.kind !== "treasury-withdraw") continue;
@@ -98,21 +99,21 @@ export async function scoreProposal(p: DecodedProposal, atBlock?: bigint): Promi
   }
   if (maxFraction > 0) {
     const weight = Math.round(Math.min(maxFraction, 1) * 40);
-    signals.push({ code: "TREASURY_FRACTION", weight, detail: `wyprowadza ${(maxFraction * 100).toFixed(1)}% salda aktywa` });
+    signals.push({ code: "TREASURY_FRACTION", weight, detail: `moves out ${(maxFraction * 100).toFixed(1)}% of the asset balance` });
   }
 
-  // Reguła 3: samoobsluga — odbiorca == proponujacy.
+  // Rule 3: self-dealing — recipient == proposer.
   const selfDeal = drains.some(
     (i) => i.kind === "treasury-withdraw" && i.to.toLowerCase() === p.proposer.toLowerCase(),
   );
   if (selfDeal) {
-    signals.push({ code: "SELF_DEALING", weight: 15, detail: "odbiorca wyplaty == proponujacy" });
+    signals.push({ code: "SELF_DEALING", weight: 15, detail: "payout recipient == proposer" });
   }
 
-  // Reguła 4: proponujacy sam moze przepchnac propozycje (jego sila >= kworum).
+  // Rule 4: the proposer alone can push the proposal through (their power >= quorum).
   const canPassAlone = ctx.quorumThreshold > 0n && ctx.proposerVotes >= ctx.quorumThreshold;
   if (canPassAlone) {
-    signals.push({ code: "PROPOSER_MEETS_QUORUM", weight: 15, detail: "sila glosu proponujacego sama przekracza kworum" });
+    signals.push({ code: "PROPOSER_MEETS_QUORUM", weight: 15, detail: "the proposer's voting power alone exceeds quorum" });
   }
 
   const score = Math.min(100, signals.reduce((s, x) => s + x.weight, 0));
@@ -126,7 +127,7 @@ export async function scoreProposal(p: DecodedProposal, atBlock?: bigint): Promi
       proposer: p.proposer,
       proposerVotes: p.proposer && formatUnits(ctx.proposerVotes, 18) + " WGOV",
       quorumThreshold: formatUnits(ctx.quorumThreshold, 18) + " WGOV",
-      quorumMultiple: ctx.quorumThreshold > 0n ? (Number(ctx.proposerVotes) / Number(ctx.quorumThreshold)).toFixed(1) + "x kworum" : "n/a",
+      quorumMultiple: ctx.quorumThreshold > 0n ? (Number(ctx.proposerVotes) / Number(ctx.quorumThreshold)).toFixed(1) + "x quorum" : "n/a",
       drainSummary: summarizeDrains(drains, ctx.assetSymbol, ctx.assetDecimals, ctx.treasuryBalances),
     },
   };
@@ -138,12 +139,12 @@ function summarizeDrains(
   dec: number,
   balances: Map<string, bigint>,
 ): string {
-  if (drains.length === 0) return "brak ruchu srodkow";
+  if (drains.length === 0) return "no fund movement";
   return drains
     .map((i) => {
       if (i.kind !== "treasury-withdraw") return "";
       const bal = balances.get(i.asset.toLowerCase()) ?? 0n;
-      return `${formatUnits(i.amount, dec)} ${sym} -> ${i.to} (skarbiec ma ${formatUnits(bal, dec)})`;
+      return `${formatUnits(i.amount, dec)} ${sym} -> ${i.to} (treasury holds ${formatUnits(bal, dec)})`;
     })
     .filter(Boolean)
     .join("; ");

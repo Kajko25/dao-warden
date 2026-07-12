@@ -1,6 +1,6 @@
-// ERC-8004 (Etap 6): adresy rejestrow, ABI i klienci portfeli agenta/walidatora.
-// Rejestry sa NIEZALEZNE od wariantu DAO (DEPLOYED_FILE) — laduja sie zawsze z
-// docs/deployed-erc8004.json.
+// ERC-8004 (Stage 6): registry addresses, ABIs, and the agent/validator wallet clients.
+// The registries are INDEPENDENT of the DAO variant (DEPLOYED_FILE) — they always load
+// from docs/deployed-erc8004.json.
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
@@ -31,7 +31,7 @@ export const erc8004 = {
   validator: getAddress(deployed.validator),
 };
 
-// --- ABI (tylko to, czego uzywa agent) ---
+// --- ABI (only what the agent uses) ---
 
 export const identityRegistryAbi = [
   { type: "function", name: "ownerOf", stateMutability: "view", inputs: [{ name: "tokenId", type: "uint256" }], outputs: [{ type: "address" }] },
@@ -58,11 +58,11 @@ export const validationRegistryAbi = [
   { type: "function", name: "getValidatorRequests", stateMutability: "view", inputs: [{ name: "validatorAddress", type: "address" }], outputs: [{ type: "bytes32[]" }] },
 ] as const;
 
-// --- Klienci portfeli ---
+// --- Wallet clients ---
 
 export function walletClientFor(envKey: string) {
   const pk = process.env[envKey];
-  if (!pk) throw new Error(`Brak ${envKey} w .env`);
+  if (!pk) throw new Error(`Missing ${envKey} in .env`);
   return createWalletClient({ account: privateKeyToAccount(pk as Hex), chain: arcTestnet, transport: http(RPC_URL) });
 }
 

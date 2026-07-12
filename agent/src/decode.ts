@@ -1,20 +1,20 @@
-// Parser instrukcji propozycji: zamienia surowe (targets, values, calldatas)
-// na ustrukturyzowane "intencje", ktore rozumie warstwa scoringu.
+// Proposal instruction parser: turns raw (targets, values, calldatas) into structured
+// "intents" that the scoring layer understands.
 import { decodeFunctionData, slice, type Address, type Hex } from "viem";
 import { treasuryAbi } from "./abi.js";
 import { addresses } from "./config.js";
 
 export type Intent =
   | {
-      kind: "treasury-withdraw"; // rozpoznany ruch srodkow ze skarbca
+      kind: "treasury-withdraw"; // a recognized fund movement out of the treasury
       target: Address;
       asset: Address;
       to: Address;
       amount: bigint;
-      value: bigint; // natywna wartosc (USDC) dolaczona do calla
+      value: bigint; // native value (USDC) attached to the call
     }
   | {
-      kind: "unknown"; // calldata, ktorej nie potrafimy zdekodowac
+      kind: "unknown"; // calldata we cannot decode
       target: Address;
       selector: Hex;
       value: bigint;
@@ -30,9 +30,9 @@ export interface DecodedProposal {
   intents: Intent[];
 }
 
-/// Dekoduje pojedyncza akcje (target + calldata + value) na intencje.
+/// Decodes a single action (target + calldata + value) into an intent.
 function decodeAction(target: Address, calldata: Hex, value: bigint): Intent {
-  // Rozpoznajemy wywolanie Treasury.withdraw po ABI (selektor 0xd9caed12).
+  // We recognize a Treasury.withdraw call by its ABI (selector 0xd9caed12).
   try {
     const decoded = decodeFunctionData({ abi: treasuryAbi, data: calldata });
     if (decoded.functionName === "withdraw") {
@@ -40,7 +40,7 @@ function decodeAction(target: Address, calldata: Hex, value: bigint): Intent {
       return { kind: "treasury-withdraw", target, asset, to, amount, value };
     }
   } catch {
-    // nie pasuje do znanego ABI — spada do "unknown"
+    // does not match a known ABI — falls through to "unknown"
   }
   const selector = (calldata.length >= 10 ? slice(calldata, 0, 4) : "0x") as Hex;
   return { kind: "unknown", target, selector, value, raw: calldata };
@@ -69,7 +69,7 @@ export function decodeProposal(args: {
   };
 }
 
-/// Czy dana intencja rusza srodki z NASZEGO skarbca (target == Treasury)?
+/// Does this intent move funds out of OUR treasury (target == Treasury)?
 export function isTreasuryDrain(intent: Intent): boolean {
   return (
     intent.kind === "treasury-withdraw" &&

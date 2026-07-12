@@ -1,5 +1,5 @@
-// Konfiguracja: laduje adresy z docs/deployed.json (jedno zrodlo prawdy),
-// definiuje lancuch Arc dla viem i tworzy publiczny klient (tylko odczyt w Etapie 3).
+// Configuration: loads addresses from docs/deployed.json (a single source of truth),
+// defines the Arc chain for viem, and creates a public (read-only) client.
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
@@ -9,15 +9,15 @@ import { createPublicClient, defineChain, http, getAddress, type Address } from 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, "..", ".."); // agent/src -> dao-warden
 
-// .env projektu (ARC_TESTNET_RPC_URL itd.) lezy w katalogu glownym repo.
+// The project .env (ARC_TESTNET_RPC_URL, etc.) lives in the repo root.
 loadEnv({ path: join(repoRoot, ".env") });
 
 const RPC_URL = process.env.ARC_TESTNET_RPC_URL;
-if (!RPC_URL) throw new Error("Brak ARC_TESTNET_RPC_URL w .env");
+if (!RPC_URL) throw new Error("Missing ARC_TESTNET_RPC_URL in .env");
 
 type Deployed = {
   chainId: number;
-  // Timelock jest opcjonalny — maja go tylko warianty zmitygowane (Etap 7).
+  // Timelock is optional — only the mitigated variants have it (Stage 7).
   contracts: {
     GovToken: Address;
     DAOGovernor: Address;
@@ -27,7 +27,7 @@ type Deployed = {
   };
   roles: Record<string, Address>;
 };
-// DEPLOYED_FILE pozwala celowac w wariant DAO (np. deployed-fast.json dla Etapow 5-7).
+// DEPLOYED_FILE lets you target a DAO variant (e.g. deployed-fast.json for Stages 5-7).
 const deployedFile = process.env.DEPLOYED_FILE ?? "deployed.json";
 const deployed: Deployed = JSON.parse(
   readFileSync(join(repoRoot, "docs", deployedFile), "utf8"),
@@ -43,7 +43,7 @@ export const arcTestnet = defineChain({
 
 export const publicClient = createPublicClient({
   chain: arcTestnet,
-  // Arc RPC nie zawsze wspiera trwale filtry -> wymuszamy polling przez getLogs.
+  // Arc RPC does not always support persistent filters -> we force polling via getLogs.
   transport: http(RPC_URL),
 });
 
@@ -52,7 +52,7 @@ export const addresses = {
   token: getAddress(deployed.contracts.GovToken),
   treasury: getAddress(deployed.contracts.Treasury),
   asset: getAddress(deployed.contracts.MockAsset),
-  // undefined w wariantach podatnych (bez timelocka)
+  // undefined in the vulnerable variants (no timelock)
   timelock: deployed.contracts.Timelock ? getAddress(deployed.contracts.Timelock) : undefined,
 };
 

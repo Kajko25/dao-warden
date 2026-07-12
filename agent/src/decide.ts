@@ -1,5 +1,5 @@
-// Decyzja agenta (Etap 5): łączy werdykt rdzenia deterministycznego z warstwą LLM
-// w JEDNĄ rekomendację akcji. To tutaj kończy się "wykrywanie", a zaczyna "reakcja".
+// The agent's decision (Stage 5): combines the deterministic core's verdict with the LLM
+// layer into ONE action recommendation. This is where "detection" ends and "reaction" begins.
 import type { RiskReport } from "./risk.js";
 import type { NarrativeAnalysis } from "./llm.js";
 
@@ -8,20 +8,20 @@ export interface Decision {
   reasons: string[];
 }
 
-// Progi eskalacji do głosu NIE:
-//  - rdzeń deterministyczny osiąga HIGH lub wyżej (score >= 45), LUB
-//  - warstwa LLM orzeka poważną rozbieżność narracja-vs-działanie.
-// Wystarczy jeden sygnał — obrona woli fałszywy alarm niż przepuszczony drenaż.
+// Escalation thresholds for the NO vote:
+//  - the deterministic core reaches HIGH or above (score >= 45), OR
+//  - the LLM layer rules a major narrative-vs-action discrepancy.
+// One signal is enough — the defense prefers a false alarm over a missed drain.
 const DETERMINISTIC_THRESHOLD = 45;
 
 export function decide(report: RiskReport, llm?: NarrativeAnalysis): Decision {
   const reasons: string[] = [];
 
   if (report.score >= DETERMINISTIC_THRESHOLD) {
-    reasons.push(`rdzeń deterministyczny: ${report.level} (${report.score}/100)`);
+    reasons.push(`deterministic core: ${report.level} (${report.score}/100)`);
   }
   if (llm && llm.verdict === "MAJOR_MISMATCH") {
-    reasons.push(`LLM: narracja maskuje działanie (rozbieżność ${llm.mismatchScore}/100)`);
+    reasons.push(`LLM: the narrative masks the action (mismatch ${llm.mismatchScore}/100)`);
   }
 
   return { action: reasons.length > 0 ? "VOTE_NO" : "ALLOW", reasons };

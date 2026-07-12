@@ -1,15 +1,16 @@
-// Etap 7 — demonstracja end-to-end DRUGIEJ warstwy obrony: timelock + agent-canceller.
+// Stage 7 — end-to-end demonstration of the SECOND defense layer: timelock + agent-canceller.
 //
-// Roznica wzgledem Etapu 5: tam agent bronil W TRAKCIE glosowania (glos NIE oddelegowana
-// sila). Tu odtwarzamy scenariusz, w ktorym agent NIE ma sily glosu w oknie glosowania
-// (uczciwi sa apatyczni, nikt nie oddelegowal) — atak WYGRYWA glosowanie. Obrona przenosi
-// sie do okna PO glosowaniu: propozycja musi przejsc przez timelock (minDelay), a agent
-// z CANCELLER_ROLE anuluje zakolejkowana operacje drenazu, zanim stanie sie wykonywalna.
+// Difference from Stage 5: there the agent defended DURING voting (a NO vote with delegated
+// power). Here we reproduce a scenario in which the agent has NO voting power in the voting
+// window (the honest holders are apathetic, nobody delegated) — the attack WINS the vote. The
+// defense moves to the window AFTER voting: the proposal must pass through the timelock
+// (minDelay), and the agent with CANCELLER_ROLE cancels the queued drain operation before it
+// becomes executable.
 //
-// Wynik: state = Canceled, skarbiec nietkniety. To dowodzi, ze timelock daje okno obronne
-// nawet gdy pierwsza warstwa (glos) zawiedzie.
+// Result: state = Canceled, treasury intact. This proves the timelock provides a defense window
+// even when the first layer (the vote) fails.
 //
-// Uruchomienie: DEPLOYED_FILE=deployed-timelocked.json npm run stage7
+// Run: DEPLOYED_FILE=deployed-timelocked.json npm run stage7
 import { encodeFunctionData, keccak256, toBytes, type Address, type Hex } from "viem";
 import { createWalletClient, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
@@ -29,7 +30,7 @@ const STATE = ["Pending", "Active", "Canceled", "Defeated", "Succeeded", "Queued
 
 function walletFor(envKey: string) {
   const pk = process.env[envKey];
-  if (!pk) throw new Error(`Brak ${envKey} w .env`);
+  if (!pk) throw new Error(`Missing ${envKey} in .env`);
   return createWalletClient({ account: privateKeyToAccount(pk as Hex), chain: arcTestnet, transport: http(RPC) });
 }
 async function state(id: bigint): Promise<number> {
@@ -40,27 +41,27 @@ async function treasuryBal(): Promise<bigint> {
 }
 
 async function main() {
-  if (!addresses.timelock) throw new Error("Ten wariant nie ma timelocka — uzyj DEPLOYED_FILE=deployed-timelocked.json");
+  if (!addresses.timelock) throw new Error("This variant has no timelock — use DEPLOYED_FILE=deployed-timelocked.json");
 
   const attacker = walletFor("ATTACKER_PRIVATE_KEY");
   const attackerAddr = attacker.account.address;
 
-  console.log("\n🛡️  DAO-WARDEN — Etap 7: obrona timelockiem (agent anuluje w oknie)\n");
+  console.log("\n🛡️  DAO-WARDEN — Stage 7: timelock defense (agent cancels in the window)\n");
   console.log(`   Governor : ${addresses.governor}`);
   console.log(`   Timelock : ${addresses.timelock}`);
-  console.log(`   warstwa LLM: ${llmAvailable() ? "AKTYWNA" : "wyłączona"}`);
-  console.log(`   agent = CANCELLER: ${(await agentIsCanceller()) ? "TAK" : "NIE"}\n`);
+  console.log(`   LLM layer: ${llmAvailable() ? "ACTIVE" : "disabled"}`);
+  console.log(`   agent = CANCELLER: ${(await agentIsCanceller()) ? "YES" : "NO"}\n`);
 
-  // --- 1) Atakujacy zdobywa sile glosu (uczciwi apatyczni — nikt nie broni glosem) ---
-  console.log("1) Atakujący deleguje sobie siłę głosu (uczciwi milczą)");
+  // --- 1) The attacker acquires voting power (honest holders apathetic — nobody defends by vote) ---
+  console.log("1) The attacker delegates voting power to itself (honest holders stay silent)");
   const aDeleg = await attacker.writeContract({ address: addresses.token, abi: votesTokenAbi, functionName: "delegate", args: [attackerAddr] });
   await publicClient.waitForTransactionReceipt({ hash: aDeleg });
-  console.log(`   atakujący: ${(await publicClient.readContract({ address: addresses.token, abi: votesTokenAbi, functionName: "getVotes", args: [attackerAddr] })) / 10n ** 18n} WGOV siły\n`);
+  console.log(`   attacker: ${(await publicClient.readContract({ address: addresses.token, abi: votesTokenAbi, functionName: "getVotes", args: [attackerAddr] })) / 10n ** 18n} WGOV of power\n`);
 
-  // --- 2) Propozycja drenujaca caly skarbiec ---
-  console.log("2) Atakujący składa propozycję drenującą skarbiec");
+  // --- 2) A proposal draining the entire treasury ---
+  console.log("2) The attacker submits a treasury-draining proposal");
   const amount = 1_000_000n * 10n ** 6n;
-  const description = "WGIP-T7: Grant operacyjny na rozwój ekosystemu";
+  const description = "WGIP-T7: Operational grant for ecosystem growth";
   const calldata = encodeFunctionData({ abi: treasuryAbi, functionName: "withdraw", args: [addresses.asset, attackerAddr, amount] });
   const targets = [addresses.treasury] as Address[];
   const values = [0n];
@@ -70,64 +71,64 @@ async function main() {
   const proposeTx = await attacker.writeContract({ address: addresses.governor, abi: governorAbi, functionName: "propose", args: [targets, values, calldatas, description] });
   const proposeRcpt = await publicClient.waitForTransactionReceipt({ hash: proposeTx });
   const proposalId = await publicClient.readContract({ address: addresses.governor, abi: governorAbi, functionName: "hashProposal", args: [targets, values, calldatas, descHash] }) as bigint;
-  console.log(`   propozycja …${proposalId.toString().slice(-6)} (blok ${proposeRcpt.blockNumber})\n`);
+  console.log(`   proposal …${proposalId.toString().slice(-6)} (block ${proposeRcpt.blockNumber})\n`);
 
-  // --- 3) Agent wykrywa (ta sama logika detekcji co Etapy 3-5) ---
-  console.log("3) Agent analizuje propozycję");
+  // --- 3) The agent detects (the same detection logic as Stages 3-5) ---
+  console.log("3) The agent analyzes the proposal");
   const decoded = decodeProposal({ proposalId, proposer: attackerAddr, description, voteStart: 0n, voteEnd: 0n, targets, values, calldatas });
   const report = await scoreProposal(decoded, proposeRcpt.blockNumber);
   const llm = llmAvailable() ? await analyzeNarrative(decoded).catch(() => undefined) : undefined;
   const decision = decide(report, llm);
-  console.log(`   rdzeń: ${report.level} ${report.score}/100${llm ? ` | LLM: ${llm.verdict} ${llm.mismatchScore}/100` : ""}`);
-  console.log(`   DECYZJA: ${decision.action} (obrona przeniesie się do okna timelocka)\n`);
+  console.log(`   core: ${report.level} ${report.score}/100${llm ? ` | LLM: ${llm.verdict} ${llm.mismatchScore}/100` : ""}`);
+  console.log(`   DECISION: ${decision.action} (defense moves to the timelock window)\n`);
 
-  // --- 4) Glosowanie: atak wygrywa (agent nie ma sily glosu w tym scenariuszu) ---
-  console.log("4) Okno głosowania — atak wygrywa (pierwsza warstwa nieaktywna)");
+  // --- 4) Voting: the attack wins (the agent has no voting power in this scenario) ---
+  console.log("4) Voting window — the attack wins (the first layer is inactive)");
   while ((await state(proposalId)) === 0) { process.stdout.write("."); await sleep(1500); }
   const atkVote = await attacker.writeContract({ address: addresses.governor, abi: governorAbi, functionName: "castVote", args: [proposalId, 1] });
   await publicClient.waitForTransactionReceipt({ hash: atkVote });
-  console.log(" -> atakujący zagłosował ZA");
+  console.log(" -> attacker voted YES");
 
   const deadline = await publicClient.readContract({ address: addresses.governor, abi: governorAbi, functionName: "proposalDeadline", args: [proposalId] }) as bigint;
   while (((await publicClient.getBlock()).timestamp) <= deadline) { process.stdout.write("."); await sleep(2000); }
-  console.log(` -> ${STATE[await state(proposalId)]} (Succeeded = atak wygrał głosowanie)\n`);
+  console.log(` -> ${STATE[await state(proposalId)]} (Succeeded = the attack won the vote)\n`);
 
-  // --- 5) Kolejkowanie do timelocka (dowolny moze; robi to atakujacy) ---
-  console.log("5) Propozycja trafia do kolejki timelocka");
+  // --- 5) Queue into the timelock (anyone can; the attacker does it) ---
+  console.log("5) The proposal enters the timelock queue");
   const queueTx = await attacker.writeContract({ address: addresses.governor, abi: governorAbi, functionName: "queue", args: [targets, values, calldatas, descHash] });
   await publicClient.waitForTransactionReceipt({ hash: queueTx });
-  console.log(` -> ${STATE[await state(proposalId)]} (Queued — start okna obronnego minDelay)\n`);
+  console.log(` -> ${STATE[await state(proposalId)]} (Queued — the minDelay defense window starts)\n`);
 
-  // --- 6) OBRONA: agent anuluje operacje w oknie minDelay ---
-  console.log("6) Agent reaguje w oknie obronnym");
+  // --- 6) DEFENSE: the agent cancels the operation in the minDelay window ---
+  console.log("6) The agent reacts in the defense window");
   const opId = await operationIdFor(targets, values, calldatas, descHash);
-  console.log(`   id operacji na timelocku: ${opId.slice(0, 18)}… (pending: ${await isOperationPending(opId)})`);
-  if (decision.action !== "VOTE_NO") { console.log("   agent poniżej progu — NIE anuluje (atak przejdzie po minDelay)"); }
+  console.log(`   timelock operation id: ${opId.slice(0, 18)}… (pending: ${await isOperationPending(opId)})`);
+  if (decision.action !== "VOTE_NO") { console.log("   agent below threshold — does NOT cancel (the attack will pass after minDelay)"); }
   else {
     const cancelTx = await cancelOperation(opId);
-    console.log(`   anulowano (tx ${cancelTx.slice(0, 12)}…)`);
+    console.log(`   cancelled (tx ${cancelTx.slice(0, 12)}…)`);
   }
   console.log();
 
-  // --- 7) Weryfikacja: stan Canceled, skarbiec caly, execute niemozliwe ---
-  console.log("7) Weryfikacja");
+  // --- 7) Verification: state Canceled, treasury intact, execute impossible ---
+  console.log("7) Verification");
   const finalState = await state(proposalId);
   const bal = await treasuryBal();
-  console.log(`   stan propozycji: ${STATE[finalState]}`);
-  console.log(`   skarbiec: ${bal / 10n ** 6n} mUSD`);
+  console.log(`   proposal state: ${STATE[finalState]}`);
+  console.log(`   treasury: ${bal / 10n ** 6n} mUSD`);
 
   let executeReverted = false;
   try {
     await publicClient.simulateContract({ address: addresses.governor, abi: governorAbi, functionName: "execute", args: [targets, values, calldatas, descHash], account: attackerAddr });
   } catch { executeReverted = true; }
-  console.log(`   próba execute przez atakującego: ${executeReverted ? "ODRZUCONA ✅" : "PRZESZŁA ❌"}\n`);
+  console.log(`   attacker's execute attempt: ${executeReverted ? "REJECTED ✅" : "PASSED ❌"}\n`);
 
   if (finalState === 2 && bal === amount && executeReverted) {
-    console.log("✅ ATAK POWSTRZYMANY przez timelock — agent anulował operację w oknie obronnym.");
-    console.log("   Ta warstwa działa nawet gdy agent NIE zdąży/zdoła zagłosować (Etap 5).");
+    console.log("✅ ATTACK STOPPED by the timelock — the agent cancelled the operation in the defense window.");
+    console.log("   This layer works even when the agent cannot / does not vote (Stage 5).");
   } else {
-    console.log("⚠️  Stan inny niż oczekiwany — sprawdź role/timing.");
+    console.log("⚠️  State different than expected — check roles/timing.");
   }
 }
 
-main().catch((e) => { console.error("Błąd demo:", e); process.exit(1); });
+main().catch((e) => { console.error("Demo error:", e); process.exit(1); });

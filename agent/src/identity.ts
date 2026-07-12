@@ -1,4 +1,4 @@
-// Tozsamosc agenta (Etap 6): odczyt rejestracji ERC-8004 z IdentityRegistry.
+// Agent identity (Stage 6): reads the ERC-8004 registration from IdentityRegistry.
 import { getAddress, hexToString, type Address } from "viem";
 import { publicClient } from "./config.js";
 import { erc8004, identityRegistryAbi } from "./erc8004.js";
@@ -15,7 +15,7 @@ export interface AgentIdentity {
 }
 
 function bytesToAddress(hex: `0x${string}`): Address | null {
-  // metadane "guards"/"validator" zapisano jako abi.encodePacked(address) = 20 bajtow.
+  // the "guards"/"validator" metadata is stored as abi.encodePacked(address) = 20 bytes.
   if (hex.length !== 42) return null; // 0x + 40
   return getAddress(hex);
 }
