@@ -1,0 +1,473 @@
+<title>DAO-WARDEN — On-chain Governance Attack Defense</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root {
+    --bg: #0e131b;
+    --surface: #151c26;
+    --surface-2: #1b2431;
+    --line: #26313f;
+    --line-soft: #1e2733;
+    --text: #e6ecf3;
+    --muted: #8a99ab;
+    --faint: #5f6f80;
+    --accent: #38c0cf;
+    --accent-ink: #0a2429;
+    --accent-dim: rgba(56, 192, 207, 0.13);
+    --critical: #ef5b60;
+    --critical-dim: rgba(239, 91, 96, 0.13);
+    --warning: #e2a14a;
+    --safe: #43b17a;
+    --safe-dim: rgba(67, 177, 122, 0.13);
+    --shadow: 0 1px 0 rgba(255,255,255,0.02) inset, 0 18px 40px -24px rgba(0,0,0,0.7);
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, "Helvetica Neue", Arial, sans-serif;
+    --mono: ui-monospace, "SF Mono", "SFMono-Regular", "JetBrains Mono", "Menlo", "Consolas", monospace;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #eaeef3;
+      --surface: #ffffff;
+      --surface-2: #f4f7fa;
+      --line: #d5dde6;
+      --line-soft: #e4eaf0;
+      --text: #17212c;
+      --muted: #566878;
+      --faint: #8395a6;
+      --accent: #0d8595;
+      --accent-ink: #ffffff;
+      --accent-dim: rgba(13, 133, 149, 0.10);
+      --critical: #cd3b41;
+      --critical-dim: rgba(205, 59, 65, 0.09);
+      --warning: #b0761d;
+      --safe: #2c8a5c;
+      --safe-dim: rgba(44, 138, 92, 0.10);
+      --shadow: 0 1px 0 rgba(255,255,255,0.6) inset, 0 16px 34px -26px rgba(19,32,45,0.4);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0e131b; --surface: #151c26; --surface-2: #1b2431; --line: #26313f; --line-soft: #1e2733;
+    --text: #e6ecf3; --muted: #8a99ab; --faint: #5f6f80;
+    --accent: #38c0cf; --accent-ink: #0a2429; --accent-dim: rgba(56,192,207,0.13);
+    --critical: #ef5b60; --critical-dim: rgba(239,91,96,0.13);
+    --warning: #e2a14a; --safe: #43b17a; --safe-dim: rgba(67,177,122,0.13);
+    --shadow: 0 1px 0 rgba(255,255,255,0.02) inset, 0 18px 40px -24px rgba(0,0,0,0.7);
+  }
+  :root[data-theme="light"] {
+    --bg: #eaeef3; --surface: #ffffff; --surface-2: #f4f7fa; --line: #d5dde6; --line-soft: #e4eaf0;
+    --text: #17212c; --muted: #566878; --faint: #8395a6;
+    --accent: #0d8595; --accent-ink: #ffffff; --accent-dim: rgba(13,133,149,0.10);
+    --critical: #cd3b41; --critical-dim: rgba(205,59,65,0.09);
+    --warning: #b0761d; --safe: #2c8a5c; --safe-dim: rgba(44,138,92,0.10);
+    --shadow: 0 1px 0 rgba(255,255,255,0.6) inset, 0 16px 34px -26px rgba(19,32,45,0.4);
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    line-height: 1.6;
+    font-size: 17px;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  .wrap { max-width: 940px; margin: 0 auto; padding: 0 24px; }
+
+  a { color: var(--accent); }
+  h1, h2, h3 { text-wrap: balance; margin: 0; }
+  .mono { font-family: var(--mono); }
+  .tnum { font-variant-numeric: tabular-nums; }
+
+  /* --- top bar --- */
+  .topbar {
+    position: sticky; top: 0; z-index: 20;
+    background: color-mix(in srgb, var(--bg) 86%, transparent);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .topbar .wrap { display: flex; align-items: center; gap: 14px; height: 54px; }
+  .brand { display: flex; align-items: center; gap: 9px; font-family: var(--mono); font-size: 13px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text); font-weight: 600; }
+  .brand .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 4px var(--accent-dim); }
+  .topbar .spacer { flex: 1; }
+  .toggle {
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--muted); background: var(--surface-2); border: 1px solid var(--line);
+    border-radius: 7px; padding: 6px 11px; cursor: pointer; transition: color .15s, border-color .15s;
+  }
+  .toggle:hover { color: var(--text); border-color: var(--accent); }
+  .toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* --- hero --- */
+  .hero { padding: 72px 0 26px; }
+  .eyebrow {
+    font-family: var(--mono); font-size: 12px; letter-spacing: 0.22em; text-transform: uppercase;
+    color: var(--accent); margin-bottom: 22px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  }
+  .eyebrow .rule { height: 1px; width: 40px; background: var(--accent); opacity: 0.5; }
+  h1.title {
+    font-size: clamp(2.5rem, 6.5vw, 4.3rem);
+    line-height: 0.98; font-weight: 800; letter-spacing: -0.03em;
+  }
+  h1.title .warden { color: var(--accent); }
+  .lede { margin-top: 26px; font-size: clamp(1.05rem, 2.2vw, 1.28rem); color: var(--muted); max-width: 60ch; line-height: 1.5; }
+  .lede strong { color: var(--text); font-weight: 600; }
+
+  .meta-row { margin-top: 34px; display: flex; flex-wrap: wrap; gap: 10px; }
+  .chip {
+    font-family: var(--mono); font-size: 12px; letter-spacing: 0.04em;
+    padding: 7px 12px; border-radius: 999px; border: 1px solid var(--line);
+    background: var(--surface); color: var(--muted); display: inline-flex; align-items: center; gap: 8px;
+  }
+  .chip b { color: var(--text); font-weight: 600; }
+  .chip.ok { border-color: color-mix(in srgb, var(--safe) 45%, var(--line)); color: var(--safe); }
+  .chip.ok b { color: var(--safe); }
+
+  /* --- section scaffolding --- */
+  section { padding: 46px 0; border-top: 1px solid var(--line-soft); }
+  .kicker {
+    font-family: var(--mono); font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--faint); margin-bottom: 14px;
+  }
+  h2.head { font-size: clamp(1.5rem, 3.4vw, 2.05rem); font-weight: 750; letter-spacing: -0.02em; line-height: 1.1; }
+  .sub { margin-top: 14px; color: var(--muted); max-width: 66ch; }
+
+  /* --- the thesis: three outcomes --- */
+  .outcomes { margin-top: 30px; display: grid; grid-template-columns: 1fr; gap: 16px; }
+  @media (min-width: 720px) { .outcomes { grid-template-columns: repeat(3, 1fr); } }
+  .card {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
+    padding: 20px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 14px;
+  }
+  .card.attack { border-top: 3px solid var(--critical); }
+  .card.defend { border-top: 3px solid var(--safe); }
+  .card .tag {
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint);
+  }
+  .card h3 { font-size: 1.06rem; font-weight: 700; letter-spacing: -0.01em; }
+  .card .who { font-size: 0.9rem; color: var(--muted); margin-top: -6px; }
+
+  .vault { margin-top: 2px; }
+  .vault .vlabel { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 11px; color: var(--faint); letter-spacing: 0.05em; margin-bottom: 6px; }
+  .bar { height: 30px; border-radius: 7px; background: var(--surface-2); border: 1px solid var(--line); overflow: hidden; position: relative; }
+  .bar .fill { position: absolute; inset: 0; width: 0; border-radius: 6px; transition: width 1.1s cubic-bezier(.22,.61,.36,1); }
+  .fill.full { background: linear-gradient(90deg, var(--safe-dim), color-mix(in srgb, var(--safe) 55%, transparent)); border-right: 2px solid var(--safe); }
+  .fill.empty { background: linear-gradient(90deg, var(--critical-dim), color-mix(in srgb, var(--critical) 45%, transparent)); }
+  .bar .val { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-family: var(--mono); font-size: 12px; font-weight: 600; letter-spacing: 0.02em; }
+  .val.safe { color: var(--safe); } .val.crit { color: var(--critical); }
+
+  .verdict { margin-top: auto; font-family: var(--mono); font-size: 12.5px; font-weight: 600; letter-spacing: 0.03em; display: flex; align-items: center; gap: 8px; padding-top: 4px; }
+  .verdict .sq { width: 9px; height: 9px; border-radius: 2px; }
+  .verdict.bad { color: var(--critical); } .verdict.bad .sq { background: var(--critical); }
+  .verdict.good { color: var(--safe); } .verdict.good .sq { background: var(--safe); }
+
+  /* --- generic two-col feature grid --- */
+  .grid2 { margin-top: 28px; display: grid; grid-template-columns: 1fr; gap: 16px; }
+  @media (min-width: 680px) { .grid2 { grid-template-columns: 1fr 1fr; } }
+  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 13px; padding: 22px; box-shadow: var(--shadow); }
+  .panel .pnum { font-family: var(--mono); font-size: 12px; color: var(--accent); letter-spacing: 0.08em; }
+  .panel h3 { font-size: 1.12rem; font-weight: 700; margin: 10px 0 8px; letter-spacing: -0.01em; }
+  .panel p { margin: 0; color: var(--muted); font-size: 0.96rem; }
+  .panel p + p { margin-top: 10px; }
+  .panel .when { display: inline-block; margin-top: 14px; font-family: var(--mono); font-size: 11px; letter-spacing: 0.05em; color: var(--text); background: var(--accent-dim); border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line)); padding: 5px 10px; border-radius: 6px; }
+
+  /* --- factors list --- */
+  .factors { margin-top: 26px; display: flex; flex-direction: column; gap: 0; border: 1px solid var(--line); border-radius: 13px; overflow: hidden; background: var(--surface); }
+  .factor { display: grid; grid-template-columns: auto 1fr; gap: 16px; padding: 18px 20px; align-items: start; }
+  .factor + .factor { border-top: 1px solid var(--line-soft); }
+  .factor .mark { font-family: var(--mono); font-size: 12px; color: var(--critical); border: 1px solid color-mix(in srgb, var(--critical) 40%, var(--line)); background: var(--critical-dim); border-radius: 6px; padding: 3px 8px; white-space: nowrap; margin-top: 2px; }
+  .factor b { font-weight: 650; }
+  .factor .d { color: var(--muted); font-size: 0.95rem; }
+
+  /* --- threat report readout --- */
+  .readout { margin-top: 28px; background: var(--surface); border: 1px solid var(--line); border-radius: 13px; overflow: hidden; box-shadow: var(--shadow); }
+  .readout .rhead { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--line-soft); background: var(--surface-2); flex-wrap: wrap; }
+  .readout .rhead .id { font-family: var(--mono); font-size: 12.5px; color: var(--muted); }
+  .readout .rhead .id b { color: var(--text); }
+  .sev { font-family: var(--mono); font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 5px 11px; border-radius: 6px; color: var(--critical); background: var(--critical-dim); border: 1px solid color-mix(in srgb, var(--critical) 45%, var(--line)); }
+  .rbody { padding: 8px 18px 16px; }
+  .signal { display: grid; grid-template-columns: 54px 1fr; gap: 14px; align-items: center; padding: 11px 0; border-bottom: 1px solid var(--line-soft); }
+  .signal:last-child { border-bottom: 0; }
+  .signal .w { font-family: var(--mono); font-size: 13px; font-weight: 700; color: var(--accent); text-align: right; }
+  .signal .n { font-family: var(--mono); font-size: 12.5px; color: var(--text); letter-spacing: 0.01em; }
+  .signal .n span { color: var(--muted); }
+  .llmline { margin-top: 14px; padding: 14px 16px; border-radius: 9px; background: var(--critical-dim); border: 1px solid color-mix(in srgb, var(--critical) 30%, var(--line)); }
+  .llmline .tt { font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--critical); margin-bottom: 6px; }
+  .llmline .qq { font-size: 0.95rem; color: var(--text); font-style: italic; }
+
+  /* --- pipeline strip --- */
+  .flow { margin-top: 26px; display: grid; grid-template-columns: 1fr; gap: 10px; }
+  @media (min-width: 760px) { .flow { grid-template-columns: repeat(4, 1fr); align-items: stretch; } }
+  .step { background: var(--surface); border: 1px solid var(--line); border-radius: 11px; padding: 15px 16px; position: relative; }
+  .step .s { font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint); }
+  .step h4 { margin: 8px 0 5px; font-size: 0.98rem; font-weight: 700; }
+  .step p { margin: 0; font-size: 0.86rem; color: var(--muted); }
+  .step .arrow { display: none; }
+  @media (min-width: 760px) {
+    .step:not(:last-child) .arrow { display: block; position: absolute; right: -8px; top: 50%; transform: translateY(-50%); color: var(--accent); font-family: var(--mono); z-index: 2; }
+  }
+
+  /* --- proofs appendix --- */
+  .proofs { margin-top: 26px; border: 1px solid var(--line); border-radius: 13px; overflow: hidden; }
+  .ptable { width: 100%; }
+  .prow { display: grid; grid-template-columns: 200px 1fr; gap: 14px; padding: 12px 18px; align-items: baseline; }
+  .prow + .prow { border-top: 1px solid var(--line-soft); }
+  .prow:nth-child(odd) { background: var(--surface); }
+  .prow:nth-child(even) { background: var(--surface-2); }
+  .prow .k { font-size: 0.86rem; color: var(--muted); }
+  .prow .v { font-family: var(--mono); font-size: 12.5px; color: var(--text); word-break: break-all; }
+  .prow .v small { color: var(--faint); }
+  @media (max-width: 560px) { .prow { grid-template-columns: 1fr; gap: 4px; } }
+  .scrollx { overflow-x: auto; }
+
+  .callout { margin-top: 22px; padding: 18px 20px; border-radius: 12px; background: var(--accent-dim); border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--line)); }
+  .callout p { margin: 0; color: var(--text); font-size: 0.98rem; }
+  .callout b { color: var(--accent); }
+
+  footer { padding: 40px 0 64px; border-top: 1px solid var(--line-soft); color: var(--faint); font-family: var(--mono); font-size: 12px; letter-spacing: 0.04em; }
+  footer .wrap { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+
+  .reveal { opacity: 0; transform: translateY(14px); transition: opacity .6s ease, transform .6s ease; }
+  .reveal.in { opacity: 1; transform: none; }
+  @media (prefers-reduced-motion: reduce) {
+    .reveal { opacity: 1; transform: none; transition: none; }
+    .bar .fill { transition: none; }
+  }
+</style>
+
+<div class="topbar">
+  <div class="wrap">
+    <span class="brand"><span class="dot"></span>DAO-WARDEN</span>
+    <span class="spacer"></span>
+    <button class="toggle" id="themeToggle" type="button" aria-label="Toggle color theme">Theme</button>
+  </div>
+</div>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="eyebrow"><span class="rule"></span> On-chain defense dossier · Arc Testnet</div>
+    <h1 class="title">An AI guardian for the<br>DAO <span class="warden">treasury.</span></h1>
+    <p class="lede">
+      Governance attacks drain treasuries through the <strong>voting mechanism itself</strong> — no code exploit,
+      so no audit catches them. DAO-WARDEN watches, judges narrative against real calldata, and
+      <strong>acts across two independent defense layers</strong>. Every claim below is proven on-chain.
+    </p>
+    <div class="meta-row">
+      <span class="chip ok"><b>Roadmap 0–7</b> complete</span>
+      <span class="chip">chainId <b>5042002</b></span>
+      <span class="chip">Solidity + Foundry · <b>21/21 tests</b></span>
+      <span class="chip">TypeScript + Viem · <b>Claude Haiku</b></span>
+      <span class="chip">ERC-8004 identity</span>
+    </div>
+  </div>
+</header>
+
+<section>
+  <div class="wrap">
+    <div class="kicker">The thesis — one attack, three outcomes</div>
+    <h2 class="head">The same treasury-draining proposal, run three ways.</h2>
+    <p class="sub">
+      An attacker holding 5% of supply clears the 1% quorum alone and proposes to withdraw the entire
+      1,000,000&nbsp;mUSD treasury to itself. What changes between columns is only who is defending.
+    </p>
+
+    <div class="outcomes">
+      <div class="card attack reveal">
+        <span class="tag">Baseline · Stage 2 · no guardian</span>
+        <h3>The treasury is drained</h3>
+        <div class="who">Honest holders stay passive. Nobody objects.</div>
+        <div class="vault">
+          <div class="vlabel"><span>Treasury after</span><span>mUSD</span></div>
+          <div class="bar"><div class="fill empty" data-fill="0"></div><span class="val crit tnum">0</span></div>
+        </div>
+        <div class="verdict bad"><span class="sq"></span>EXECUTED — 1,000,000 → 0</div>
+      </div>
+
+      <div class="card defend reveal">
+        <span class="tag">Vote defense · Stage 5</span>
+        <h3>Defeated during the vote</h3>
+        <div class="who">Agent votes NO with delegated power (100k).</div>
+        <div class="vault">
+          <div class="vlabel"><span>Treasury after</span><span>mUSD</span></div>
+          <div class="bar"><div class="fill full" data-fill="100"></div><span class="val safe tnum">1,000,000</span></div>
+        </div>
+        <div class="verdict good"><span class="sq"></span>DEFEATED — For 50k &lt; Against 100k</div>
+      </div>
+
+      <div class="card defend reveal">
+        <span class="tag">Timelock defense · Stage 7</span>
+        <h3>Cancelled after it won</h3>
+        <div class="who">Attack wins the vote; agent cancels in the window.</div>
+        <div class="vault">
+          <div class="vlabel"><span>Treasury after</span><span>mUSD</span></div>
+          <div class="bar"><div class="fill full" data-fill="100"></div><span class="val safe tnum">1,000,000</span></div>
+        </div>
+        <div class="verdict good"><span class="sq"></span>CANCELED — execute rejected</div>
+      </div>
+    </div>
+
+    <div class="callout reveal">
+      <p><b>Why two layers.</b> The vote defends <em>during</em> voting and needs delegated power. The timelock
+      defends <em>after</em> a won vote — it saves the case even when the attacker holds a real majority.
+      The timelock buys time; the guardian uses it. Together they cover both.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="kicker">The problem — the BONK attack class</div>
+    <h2 class="head">Three legitimate settings, combined into a weapon.</h2>
+    <p class="sub">
+      Reference case: the July 2026 BONK DAO attack. A few million dollars of tokens, extremely low turnout,
+      a self-voted proposal — and a drained treasury. No contract was hacked. We reproduce this vulnerability
+      class on EVM as a proving ground.
+    </p>
+    <div class="factors reveal">
+      <div class="factor"><span class="mark">quorum 1%</span><div><b>Low quorum.</b> <span class="d">A tiny fraction of tokens is enough to pass a proposal — a 5% holder alone clears it five times over.</span></div></div>
+      <div class="factor"><span class="mark">threshold 0</span><div><b>Zero proposal threshold.</b> <span class="d">Anyone can submit any proposal, with no tokens staked to do so.</span></div></div>
+      <div class="factor"><span class="mark">no timelock</span><div><b>No defense window.</b> <span class="d">Once voting ends, funds leave in the same transaction. The honest community gets no time to react.</span></div></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="kicker">Detection — how the guardian judges</div>
+    <h2 class="head">Deterministic rules catch the mechanics. The LLM catches the intent.</h2>
+    <p class="sub">
+      The core is deterministic and auditable, built before the AI layer and running without it. Claude Haiku
+      adds one thing rules can't: judging whether the human-facing narrative honestly matches the calldata.
+      Here is the agent's real readout of the WGIP-1 attack.
+    </p>
+
+    <div class="readout reveal">
+      <div class="rhead">
+        <span class="id">proposal <b>WGIP-1</b> · "Operational grant for ecosystem growth"</span>
+        <span class="sev">CRITICAL · 100/100</span>
+      </div>
+      <div class="rbody">
+        <div class="signal"><span class="w">+30</span><span class="n">TREASURY_SPEND <span>— moves funds out of the vault</span></span></div>
+        <div class="signal"><span class="w">+40</span><span class="n">TREASURY_FRACTION <span>— drains 100% of the asset balance</span></span></div>
+        <div class="signal"><span class="w">+15</span><span class="n">SELF_DEALING <span>— payout recipient == proposer</span></span></div>
+        <div class="signal"><span class="w">+15</span><span class="n">PROPOSER_MEETS_QUORUM <span>— proposer's power alone clears quorum</span></span></div>
+        <div class="llmline">
+          <div class="tt">Claude Haiku · narrative vs. action · MAJOR_MISMATCH 85/100</div>
+          <div class="qq">"An 'operational grant' description masks a transfer of 100% of the treasury to the proposer's own address — a BONK-signature attack."</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="flow">
+      <div class="step reveal"><div class="s">01 · listen</div><h4>ProposalCreated</h4><p>Watches the Governor for every new proposal, live.</p><span class="arrow">→</span></div>
+      <div class="step reveal"><div class="s">02 · decode</div><h4>Calldata → intent</h4><p>Recognizes Treasury.withdraw by selector 0xd9caed12.</p><span class="arrow">→</span></div>
+      <div class="step reveal"><div class="s">03 · score</div><h4>Four hard rules</h4><p>Evaluated at the proposal's creation block, not after.</p><span class="arrow">→</span></div>
+      <div class="step reveal"><div class="s">04 · decide</div><h4>VOTE_NO / cancel</h4><p>Core ≥ 45 or LLM major mismatch triggers a reaction.</p></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="kicker">Defense — the two layers, in detail</div>
+    <h2 class="head">One guardian, two ways to stop the drain.</h2>
+    <div class="grid2">
+      <div class="panel reveal">
+        <div class="pnum">Layer 1 · Stage 5</div>
+        <h3>Vote with the apathetic majority's power</h3>
+        <p>Honest holders delegate their vote to the always-on guardian. Above the risk threshold it casts NO
+        with that delegated power. In the live run: For 50k versus Against 100k → the proposal is defeated and
+        the treasury is untouched.</p>
+        <span class="when">acts DURING the voting period</span>
+      </div>
+      <div class="panel reveal">
+        <div class="pnum">Layer 2 · Stage 7</div>
+        <h3>Cancel in the timelock window</h3>
+        <p>The mitigated DAO routes execution through a TimelockController — exactly one variable changed, quorum
+        and threshold left deliberately weak. Holding CANCELLER_ROLE, the agent cancels the queued drain during
+        the minDelay window. Even after a won vote: state Canceled, execute rejected.</p>
+        <span class="when">acts AFTER the vote succeeds</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="kicker">Accountability — ERC-8004 Trustless Agents</div>
+    <h2 class="head">The guardian has a portable identity and a tamper-evident record.</h2>
+    <p class="sub">
+      The agent registered itself as an ERC-721 identity with an AgentCard on IPFS. Every decision is committed
+      on-chain and independently scored — so a delegate you entrust with real voting power is itself auditable.
+    </p>
+    <div class="grid2">
+      <div class="panel reveal">
+        <div class="pnum">Audit trail</div>
+        <h3>Decisions are cryptographic commitments</h3>
+        <p>For each evaluated proposal the agent files a validationRequest whose requestHash is the keccak256 of
+        the canonical decision record. Verified to the byte: the stored record's hash equals the on-chain hash,
+        and its CID equals the on-chain requestURI. A decision cannot be silently changed later.</p>
+      </div>
+      <div class="panel reveal">
+        <div class="pnum">Reputation</div>
+        <h3>An independent validator scores the call</h3>
+        <p>A separate validator wallet answers with a 0–100 score aggregated into the agent's reputation. On the
+        real WGIP-1 defense the validator confirmed the decision 100/100 → reputation: 1 review, average 100.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="kicker">Proofs — deployed & independently verified with cast</div>
+    <h2 class="head">On-chain evidence.</h2>
+    <div class="proofs reveal scrollx">
+      <div class="ptable">
+        <div class="prow"><span class="k">Vulnerable DAO — baseline</span><span class="v">Governor <small>0x0CbCaa61344Efef42916a7461e1bF2B673Fc4a21</small></span></div>
+        <div class="prow"><span class="k">Baseline attack tx</span><span class="v">0x0381784133e786bbbeccd67da354ae0f07b7b50e9f17c4f1eb93eb4ce5cbdd21 <small>· status 1 · treasury 1,000,000 → 0</small></span></div>
+        <div class="prow"><span class="k">TimelockController</span><span class="v">0x5fB14e2398E53d15E044b770B8aCB67FDa04337f <small>· minDelay 120s</small></span></div>
+        <div class="prow"><span class="k">Timelocked Governor</span><span class="v">0x641181a13c3114392e40fB4dc0785ACE279E9c1E <small>· Treasury owner = timelock</small></span></div>
+        <div class="prow"><span class="k">Stage 7 cancel tx</span><span class="v">0x0b4265cd43… <small>· state Canceled · treasury intact · execute rejected</small></span></div>
+        <div class="prow"><span class="k">IdentityRegistry</span><span class="v">0x5a33040857B28DCB05CBE4dC32028705AaF34D36 <small>· agentId 1</small></span></div>
+        <div class="prow"><span class="k">ValidationRegistry</span><span class="v">0xb7f7F332a3A8523fbd3F18bC624544a63f422dE4 <small>· reputation 100/100</small></span></div>
+        <div class="prow"><span class="k">Global agent id</span><span class="v">eip155:5042002:0x5a33…4D36:1</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span>DAO-WARDEN · governance attack defense</span>
+    <span>Arc Testnet · chainId 5042002 · verified via cast</span>
+  </div>
+</footer>
+
+<script>
+  (function () {
+    var root = document.documentElement;
+    var btn = document.getElementById("themeToggle");
+    function current() {
+      var attr = root.getAttribute("data-theme");
+      if (attr) return attr;
+      return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    }
+    btn.addEventListener("click", function () {
+      var next = current() === "dark" ? "light" : "dark";
+      root.setAttribute("data-theme", next);
+    });
+
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (e.isIntersecting) {
+          e.target.classList.add("in");
+          var fills = e.target.querySelectorAll(".bar .fill");
+          fills.forEach(function (f) { f.style.width = (f.getAttribute("data-fill") || "0") + "%"; });
+          io.unobserve(e.target);
+        }
+      });
+    }, { threshold: 0.16 });
+    document.querySelectorAll(".reveal").forEach(function (el) { io.observe(el); });
+  })();
+</script>
