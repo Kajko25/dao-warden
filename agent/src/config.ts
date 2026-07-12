@@ -17,7 +17,14 @@ if (!RPC_URL) throw new Error("Brak ARC_TESTNET_RPC_URL w .env");
 
 type Deployed = {
   chainId: number;
-  contracts: { GovToken: Address; DAOGovernor: Address; Treasury: Address; MockAsset: Address };
+  // Timelock jest opcjonalny — maja go tylko warianty zmitygowane (Etap 7).
+  contracts: {
+    GovToken: Address;
+    DAOGovernor: Address;
+    Treasury: Address;
+    MockAsset: Address;
+    Timelock?: Address;
+  };
   roles: Record<string, Address>;
 };
 // DEPLOYED_FILE pozwala celowac w wariant DAO (np. deployed-fast.json dla Etapow 5-7).
@@ -45,6 +52,8 @@ export const addresses = {
   token: getAddress(deployed.contracts.GovToken),
   treasury: getAddress(deployed.contracts.Treasury),
   asset: getAddress(deployed.contracts.MockAsset),
+  // undefined w wariantach podatnych (bez timelocka)
+  timelock: deployed.contracts.Timelock ? getAddress(deployed.contracts.Timelock) : undefined,
 };
 
 export const roles = deployed.roles;

@@ -9,6 +9,7 @@
     "scan": "tsx src/scan.ts",
     "stage5": "tsx src/stage5-demo.ts",
     "stage6": "tsx src/stage6-demo.ts",
+    "stage7": "tsx src/stage7-demo.ts",
     "identity": "tsx src/identity-cli.ts"
   },
   "dependencies": {

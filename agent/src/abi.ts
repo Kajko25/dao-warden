@@ -30,6 +30,23 @@ export const governorAbi = [
   { type: "function", name: "propose", stateMutability: "nonpayable", inputs: [{ name: "targets", type: "address[]" }, { name: "values", type: "uint256[]" }, { name: "calldatas", type: "bytes[]" }, { name: "description", type: "string" }], outputs: [{ type: "uint256" }] },
   { type: "function", name: "execute", stateMutability: "payable", inputs: [{ name: "targets", type: "address[]" }, { name: "values", type: "uint256[]" }, { name: "calldatas", type: "bytes[]" }, { name: "descriptionHash", type: "bytes32" }], outputs: [{ type: "uint256" }] },
   { type: "function", name: "hashProposal", stateMutability: "pure", inputs: [{ name: "targets", type: "address[]" }, { name: "values", type: "uint256[]" }, { name: "calldatas", type: "bytes[]" }, { name: "descriptionHash", type: "bytes32" }], outputs: [{ type: "uint256" }] },
+  // Wariant z timelockiem (Etap 7): wygrana propozycja musi byc najpierw zakolejkowana.
+  { type: "function", name: "queue", stateMutability: "nonpayable", inputs: [{ name: "targets", type: "address[]" }, { name: "values", type: "uint256[]" }, { name: "calldatas", type: "bytes[]" }, { name: "descriptionHash", type: "bytes32" }], outputs: [{ type: "uint256" }] },
+  { type: "function", name: "proposalNeedsQueuing", stateMutability: "view", inputs: [{ name: "proposalId", type: "uint256" }], outputs: [{ type: "bool" }] },
+  { type: "function", name: "timelock", stateMutability: "view", inputs: [], outputs: [{ type: "address" }] },
+] as const;
+
+// TimelockController — warstwa obronna Etapu 7. Agent (CANCELLER_ROLE) anuluje
+// zakolejkowana operacje ataku w oknie minDelay.
+export const timelockAbi = [
+  { type: "function", name: "getMinDelay", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },
+  { type: "function", name: "hashOperationBatch", stateMutability: "pure", inputs: [{ name: "targets", type: "address[]" }, { name: "values", type: "uint256[]" }, { name: "payloads", type: "bytes[]" }, { name: "predecessor", type: "bytes32" }, { name: "salt", type: "bytes32" }], outputs: [{ type: "bytes32" }] },
+  { type: "function", name: "isOperationPending", stateMutability: "view", inputs: [{ name: "id", type: "bytes32" }], outputs: [{ type: "bool" }] },
+  { type: "function", name: "isOperationReady", stateMutability: "view", inputs: [{ name: "id", type: "bytes32" }], outputs: [{ type: "bool" }] },
+  { type: "function", name: "getTimestamp", stateMutability: "view", inputs: [{ name: "id", type: "bytes32" }], outputs: [{ type: "uint256" }] },
+  { type: "function", name: "cancel", stateMutability: "nonpayable", inputs: [{ name: "id", type: "bytes32" }], outputs: [] },
+  { type: "function", name: "hasRole", stateMutability: "view", inputs: [{ name: "role", type: "bytes32" }, { name: "account", type: "address" }], outputs: [{ type: "bool" }] },
+  { type: "function", name: "CANCELLER_ROLE", stateMutability: "view", inputs: [], outputs: [{ type: "bytes32" }] },
 ] as const;
 
 // Denominator kworum w OZ GovernorVotesQuorumFraction to stale 100 (procent).

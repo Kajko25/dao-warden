@@ -1,0 +1,42 @@
+{
+  "network": "Arc Testnet",
+  "chainId": 5042002,
+  "variant": "timelocked-fast (delay 5s / period 30s, timelock minDelay 120s) — Stage 7 mitigation",
+  "deployedAt": "2026-07-12",
+  "deployer": "0x6D4843155412832dC3Fa9C59e593cdAfdf52639D",
+  "contracts": {
+    "GovToken": "0x32Ebc2098E99904047303FbBDda8C93FA255ad5A",
+    "Timelock": "0x5fB14e2398E53d15E044b770B8aCB67FDa04337f",
+    "DAOGovernor": "0x641181a13c3114392e40fB4dc0785ACE279E9c1E",
+    "Treasury": "0xB565228545e798495F10330685779eB5C2b639f4",
+    "MockAsset": "0x5907970226D869A4195EE0245ba5E16c35B10c7b"
+  },
+  "params": {
+    "supply": "1000000e18",
+    "votingDelaySec": 5,
+    "votingPeriodSec": 30,
+    "quorumPct": 1,
+    "proposalThreshold": 0,
+    "timelock": true,
+    "timelockMinDelaySec": 120,
+    "clockMode": "mode=timestamp"
+  },
+  "distribution": {
+    "attacker": "50000e18",
+    "honest_voter": "100000e18",
+    "deployer_float": "850000e18",
+    "treasury_mUSD": "1000000e6"
+  },
+  "roles": {
+    "attacker": "0x3Dfda2a699cF86FB08428CF7100c6bed6fd00586",
+    "honest_voter": "0x4979b3d5B712BEd2407D3E69CBA55CAaFc4fe2c5",
+    "agent": "0x0bDEb6882AEeFA2E3CcC956FAB425C2c4479BEFC",
+    "validator": "0xFd8d7CbE0cC709468595926DE552b6E6a2c955fB"
+  },
+  "timelockRoles": {
+    "proposer": "DAOGovernor",
+    "canceller": "agent",
+    "executor": "0x0000000000000000000000000000000000000000 (open)",
+    "adminRenounced": true
+  }
+}

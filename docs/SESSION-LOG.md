@@ -6,8 +6,49 @@
 
 ---
 
-## 🟢 STAN LIVE (na 2026-07-12) — PAUZA, użytkownik wróci później
+## 🟢 STAN LIVE (na 2026-07-12) — 🎉 ETAP 7 UKOŃCZONY ON-CHAIN. CAŁA ROADMAPA (0-7) GOTOWA.
 
+**Ukończone: Etapy 0, 1, 2, 3, 4, 5, 6, 7 — wszystkie wdrożone i zweryfikowane na Arc.** Nic nie
+działa w tle. Zostały tylko rzeczy „kosmetyczne" do finalnego pokazu dla komisji (patrz na dole).
+
+**Etap 7 — deploy + dowód E2E on-chain (2026-07-12):**
+- Wdrożono wariant **timelocked-fast** (`docs/deployed-timelocked.json`): GovToken
+  `0x32Ebc2098E99904047303FbBDda8C93FA255ad5A` · **Timelock `0x5fB14e2398E53d15E044b770B8aCB67FDa04337f`**
+  (minDelay 120s) · DAOGovernor `0x641181a13c3114392e40fB4dc0785ACE279E9c1E` · Treasury
+  `0xB565228545e798495F10330685779eB5C2b639f4` (owner = timelock) · MockAsset
+  `0x5907970226D869A4195EE0245ba5E16c35B10c7b`. Role: Governor=PROPOSER, agent=CANCELLER, deployer
+  zrzekł się admina. Wszystko potwierdzone `cast`.
+- **Dowód E2E (`DEPLOYED_FILE=deployed-timelocked.json npm run stage7`):** scenariusz, w którym uczciwi
+  są apatyczni → **atak WYGRYWA głosowanie** (Succeeded), trafia do kolejki timelocka (Queued), a agent
+  (rdzeń CRITICAL 100/100 + LLM MAJOR_MISMATCH 85/100 → VOTE_NO) **anuluje operację w oknie minDelay**
+  (tx `0x0b4265cd43…`) → **stan Canceled, skarbiec 1,000,000 mUSD nietknięty, `execute` odrzucone.**
+  To dowodzi DRUGIEJ warstwy obrony — działa nawet gdy pierwsza (głos, Etap 5) jest nieaktywna.
+
+**Etap 7 — kod (2026-07-12):**
+- `src/DAOGovernorTimelocked.sol` — wariant zmitygowany: JEDNA zmiana wzgl. podatnego = egzekucja
+  przez `GovernorTimelockControl`. Kworum 1% i próg 0 CELOWO bez zmian (czysty dowód: broni sam timelock).
+- `test/TimelockDefense.t.sol` — golden test mitygacji, **5/5 PASS**. Cztery dowody: (1) po Succeeded
+  brak natychmiastowej egzekucji (koniec „drenażu w 1 tx" z Etapu 2), (2) **agent z CANCELLER_ROLE
+  anuluje w oknie minDelay → Canceled, skarbiec cały** (sedno), (3) uczciwie: bez anulowania atak wchodzi
+  po minDelay (samo opóźnienie to nie obrona — timelock i agent są komplementarne), (4) legalne
+  propozycje działają normalnie. Cała suita repo: **21/21**.
+- `script/DeployTimelockedDAO.s.sol` — deploy wariantu (fast, minDelay 120s); skarbiec → owner = timelock,
+  Governor dostaje PROPOSER_ROLE, agent CANCELLER_ROLE, deployer zrzeka się admina.
+- Agent: `agent/src/cancel.ts` (liczy salt/opId jak GovernorTimelockControl — **salt zweryfikowany
+  numerycznie zgodny z Solidity**, anuluje operację), `stage7-demo.ts` (`npm run stage7`), `abi.ts`
+  rozszerzone o queue/timelock/TimelockController, `config.ts` czyta opcjonalny `Timelock`. tsc czysto.
+- Estymata gazu (z `test_MeasureTimelockedDeployGas`): Timelock 1.44M + Governor 3.60M + wiring 0.06M
+  + Treasury 0.25M + GovToken 1.62M + MockERC20 0.46M + mint/transfery ≈ **~7.6M gas ≈ ~0.15 USDC**.
+
+**➡️ NASTĘPNY KROK: roadmapa techniczna 0-7 zamknięta.** Zostały opcje na finalny pokaz dla komisji:
+(a) spiąć narrację w `PITCH.md` (mamy komplet: baseline atak z Etapu 2, obrona głosem z Etapu 5, obrona
+timelockiem z Etapu 7, tożsamość/audyt ERC-8004 z Etapu 6); (b) ewentualnie odtworzyć pełny cykl na
+realistycznym (~1h) wariancie zamiast fast; (c) rozważyć przypięcie AgentCard do publicznego IPFS.
+Nic z tego nie jest wymagane do działania — rdzeń jest kompletny i udowodniony on-chain.
+
+---
+
+### (poprzedni stan LIVE — archiwum)
 **Ukończone: Etapy 0, 1, 2, 3, 4, 5, 6.** Nic nie działa w tle — nic nie wisi, nie trzeba niczego
 pilnować. Można bezpiecznie wyłączyć komputer.
 
