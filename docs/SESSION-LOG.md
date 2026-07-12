@@ -254,4 +254,13 @@ github.com/Kajko25/dao-warden.
 
 **English translation (committee is English-speaking).** All committee-facing material translated to
 English: README, PITCH, this session log, code comments, Solidity revert strings, and console logs.
-Identifiers were already English. Chat with the user stays Polish.
+Identifiers were already English. Chat with the user stays Polish. The LLM system prompt is now English
+too (the model reasons in English). Verified: forge suite still 21/21, agent tsc clean, no Polish
+diacritics/words remain in `src/test/script/agent`. ONE intentional exception: the on-chain-committed
+decision record `docs/decisions/13b6af1c0df212e2.json` is left in Polish — its keccak256 == the on-chain
+`requestHash` and its CID == the on-chain `requestURI` (Stage 6), so translating it would break the
+integrity proof. Re-running `npm run stage6` would file a fresh English record if ever needed.
+
+**Visual pitch.** Added `docs/pitch.html` — a self-contained, theme-aware "defense dossier" for the
+committee (three-outcome proof, WGIP-1 threat readout, two defense layers, ERC-8004 accountability,
+on-chain proofs appendix). Also published as a private Artifact on claude.ai.
