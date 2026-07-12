@@ -1,0 +1,33 @@
+{
+  "network": "Arc Testnet",
+  "chainId": 5042002,
+  "stage": "6 — ERC-8004 identity + audit trail + validator reputation",
+  "deployedAt": "2026-07-12",
+  "deployer": "0x6D4843155412832dC3Fa9C59e593cdAfdf52639D",
+  "contracts": {
+    "IdentityRegistry": "0x5a33040857B28DCB05CBE4dC32028705AaF34D36",
+    "ValidationRegistry": "0xb7f7F332a3A8523fbd3F18bC624544a63f422dE4"
+  },
+  "agent": {
+    "agentId": 1,
+    "owner": "0x0bDEb6882AEeFA2E3CcC956FAB425C2c4479BEFC",
+    "agentURI": "ipfs://bafkreih3vn4ehc3ilgor6ces6cswjzwmcclapcy6nm34sijklnvlwfqnyu",
+    "agentCardFile": "docs/agent-card.json",
+    "metadata": {
+      "framework": "dao-warden",
+      "guards": "0x0CbCaa61344Efef42916a7461e1bF2B673Fc4a21",
+      "validator": "0xFd8d7CbE0cC709468595926DE552b6E6a2c955fB"
+    }
+  },
+  "validator": "0xFd8d7CbE0cC709468595926DE552b6E6a2c955fB",
+  "txHashes": {
+    "deployIdentityRegistry": "0xcbde2ca62372bd9ca43ed0d7f6f262e7618b109dc178798234f1d1a886414b38",
+    "deployValidationRegistry": "0x90be37f96422540573d199352afe845be128d2d8b1c689dca65fd719ad17760e",
+    "registerAgent": "0xd288094b0c8f5822fd0484520bfb0def6a25d1b1579634e7d65c7109ae38b28f"
+  },
+  "notes": {
+    "globalAgentId": "eip155:5042002:0x5a33040857B28DCB05CBE4dC32028705AaF34D36:1",
+    "ipfsPinning": "AgentCard NIE przypiety do publicznego IPFS (brak creds). CID prawdziwy i content-addressowany — patrz docs/agent-card.cid.txt.",
+    "specDeviations": "IdentityRegistry pomija setAgentWallet z podpisem EIP-712 (portfel agenta == wlasciciel). ValidationRegistry uzywa constructor zamiast initialize (brak proxy)."
+  }
+}

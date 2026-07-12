@@ -1,0 +1,20 @@
+[profile.default]
+src = "src"
+out = "out"
+libs = ["lib"]
+solc = "0.8.28"
+# Arc Testnet wspiera opcodes Cancun — zweryfikowane empirycznie 2026-07-12 przez
+# eth_call --create z PUSH0 (0x5f) i MCOPY (0x5e): oba przechodza bez reverta.
+# OpenZeppelin v5.6 uzywa MCOPY (Bytes.sol/SignatureChecker), wiec wymaga cancun.
+evm_version = "cancun"
+optimizer = true
+optimizer_runs = 200
+
+[fmt]
+line_length = 100
+tab_width = 4
+bracket_spacing = true
+
+# RPC skrot: forge/cast --rpc-url arc
+[rpc_endpoints]
+arc = "${ARC_TESTNET_RPC_URL}"

@@ -1,0 +1,34 @@
+{
+  "network": "Arc Testnet",
+  "chainId": 5042002,
+  "variant": "fast (delay 5s / period 30s) — for iterating Stages 5-7",
+  "deployedAt": "2026-07-12",
+  "deployer": "0x6D4843155412832dC3Fa9C59e593cdAfdf52639D",
+  "contracts": {
+    "GovToken": "0x0e9337D33c19b58551366b29116FfE3CA22EEcE4",
+    "DAOGovernor": "0xddd55F7aCbFCb5DcB6e59e3e01Cca135f4B0A6c4",
+    "Treasury": "0x7fc586086513538f493280F9eA49B1E30531cF92",
+    "MockAsset": "0xbFA5369FF625149670dCFe0e9e247E08CD6B31FC"
+  },
+  "params": {
+    "supply": "1000000e18",
+    "votingDelaySec": 5,
+    "votingPeriodSec": 30,
+    "quorumPct": 1,
+    "proposalThreshold": 0,
+    "timelock": false,
+    "clockMode": "mode=timestamp"
+  },
+  "distribution": {
+    "attacker": "50000e18",
+    "honest_voter": "100000e18",
+    "deployer_float": "850000e18",
+    "treasury_mUSD": "1000000e6"
+  },
+  "roles": {
+    "attacker": "0x3Dfda2a699cF86FB08428CF7100c6bed6fd00586",
+    "honest_voter": "0x4979b3d5B712BEd2407D3E69CBA55CAaFc4fe2c5",
+    "agent": "0x0bDEb6882AEeFA2E3CcC956FAB425C2c4479BEFC",
+    "validator": "0xFd8d7CbE0cC709468595926DE552b6E6a2c955fB"
+  }
+}

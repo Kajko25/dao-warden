@@ -1,0 +1,13 @@
+bafkreih3vn4ehc3ilgor6ces6cswjzwmcclapcy6nm34sijklnvlwfqnyu
+
+# CIDv1 (kodek raw, sha2-256) pliku docs/agent-card.json.
+# agentURI uzyty przy rejestracji ERC-8004:
+#   ipfs://bafkreih3vn4ehc3ilgor6ces6cswjzwmcclapcy6nm34sijklnvlwfqnyu
+#
+# Weryfikacja integralnosci (każdy moze przeliczyc z tresci pliku):
+#   node scripts/ipfs-cid.mjs docs/agent-card.json
+#
+# UWAGA (uczciwie): plik NIE jest przypiety do publicznego IPFS (brak creds do
+# pinningu w tym srodowisku). CID jest prawdziwy i content-addressowany, wiec
+# potwierdza integralnosc zacommitowanej tresci; realne udostepnienie przez
+# publiczna bramke IPFS to osobny krok hostingu (Pinata/web3.storage/wlasny node).

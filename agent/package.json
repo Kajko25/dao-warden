@@ -1,0 +1,24 @@
+{
+  "name": "dao-warden-agent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "DAO-WARDEN — agent-strażnik wykrywający governance attacks (Etap 3: rdzeń deterministyczny)",
+  "scripts": {
+    "watch": "tsx src/index.ts",
+    "scan": "tsx src/scan.ts",
+    "stage5": "tsx src/stage5-demo.ts",
+    "stage6": "tsx src/stage6-demo.ts",
+    "identity": "tsx src/identity-cli.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.111.0",
+    "dotenv": "^16.4.5",
+    "viem": "^2.55.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

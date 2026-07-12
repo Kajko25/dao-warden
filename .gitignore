@@ -1,0 +1,20 @@
+# Compiler files
+cache/
+out/
+
+# Commonly ignored directories
+.logs/
+.ignore/
+
+# Ignores development broadcast logs
+!/broadcast
+/broadcast/*/31337/
+/broadcast/**/dry-run/
+
+# Wygenerowane docs z `forge doc` (nasze wlasne notatki w docs/ trackujemy recznie)
+docs/book/
+
+# Dotenv file
+.env
+.env.*
+!.env.example
