@@ -1,50 +1,94 @@
 # DAO-WARDEN
 
-Agent-strażnik DAO na **Arc Testnet** wykrywający *governance attacks* — ataki, w których ktoś kupuje większość głosów i przepycha propozycję drenującą treasury (odpowiednik ataku na BONK DAO z lipca 2026: przegłosowanie propozycji przy skrajnie niskiej frekwencji, bez exploita kodu, przez normalny mechanizm głosowania).
+An AI **guardian agent** on **Arc Testnet** that detects *governance attacks* — attacks where
+someone buys a voting majority and pushes through a proposal that drains the treasury (the EVM
+analogue of the July 2026 BONK DAO attack: a proposal passed at extremely low turnout, with no
+code exploit, purely through the legitimate voting mechanism).
 
-Odtwarzamy **klasę podatności** BONK na EVM (vote-buying, niskie kworum, brak timelocka) — nie kopiujemy kodu z Solany.
+We reproduce the **vulnerability class** of BONK on EVM (vote-buying, low quorum, no timelock) —
+we do not copy the Solana code.
 
-## Sieć (zweryfikowane empirycznie 2026-07-12)
+**Defense in two independent, complementary layers, each proven on-chain against a measured
+baseline:**
 
-| Parametr | Wartość |
+| Scenario | Who defends | On-chain result |
+|---|---|---|
+| **Baseline** (no guardian) | nobody (honest holders passive) | treasury **1,000,000 → 0 mUSD**, attack `Executed` |
+| **Vote defense** | agent votes NO with delegated power | proposal **DEFEATED**, treasury intact |
+| **Timelock defense** | agent cancels in the post-vote window | proposal **Canceled**, treasury intact |
+
+## Network (empirically verified 2026-07-12)
+
+| Parameter | Value |
 |---|---|
 | Chain | Arc Testnet (Circle) |
 | chainId | `5042002` (hex `0x4cef52`) |
 | RPC | `https://rpc.testnet.arc.network` |
 | Explorer | `testnet.arcscan.app` |
-| Czas bloku | ~0.5 s |
-| Gas token | USDC (natywny) |
+| Block time | ~0.5 s |
+| Gas token | USDC (native) |
 
 ## Stack
 
-- **Kontrakty:** Solidity 0.8.28 + OpenZeppelin Contracts v5.6.1 (ERC20Votes, Governor, TimelockController), Foundry.
-- **Zegar Governora:** tryb **timestamp** (`mode=timestamp`) — okresy głosowania w sekundach, odporne na blok 0.5 s.
-- **Agent:** TypeScript + Viem (Etap 3+).
-- **LLM:** Claude API (model Haiku) — klucz wyłącznie ze zmiennej środowiskowej (Etap 4).
-- **Tożsamość/audyt:** ERC-8004 IdentityRegistry + IPFS (Etap 6).
+- **Contracts:** Solidity 0.8.28 + OpenZeppelin Contracts v5.6.1 (ERC20Votes, Governor,
+  TimelockController), Foundry.
+- **Governor clock:** **timestamp** mode (`mode=timestamp`) — voting periods in seconds, robust
+  to the ~0.5 s block time.
+- **Agent:** TypeScript + Viem.
+- **LLM:** Claude API (Haiku model) — key exclusively from an environment variable.
+- **Identity/audit:** ERC-8004 IdentityRegistry + ValidationRegistry + IPFS.
 
-## Struktura
+## Structure
 
 ```
-src/        kontrakty (GovToken, Treasury, DAOGovernor, mocks)
-test/       testy Foundry (golden test ataku)
-script/     skrypty deployu
-agent/      agent TS + Viem (Etap 3+)
-docs/       notatki i decyzje projektowe
+src/        contracts (GovToken, Treasury, DAOGovernor, DAOGovernorTimelocked, erc8004/, mocks/)
+test/       Foundry tests (attack golden test, timelock defense golden test)
+script/     deploy scripts
+agent/      TS + Viem agent (detection core, LLM layer, reaction, ERC-8004 integration)
+docs/       notes, pitch, session log, deployment inventories
 ```
 
-## Mapa etapów
+## Stage map (roadmap 0–7 complete)
 
-- [x] **Etap 0** — środowisko, repo, OZ, konfiguracja Arc
-- [ ] **Etap 1** — kontrakty podatnego DAO + testy lokalne *(w toku)*
-- [ ] **Etap 2** — deploy na Arc + symulacja ataku end-to-end (golden test on-chain)
-- [ ] **Etap 3** — agent: rdzeń deterministyczny (listener + parser + scoring)
-- [ ] **Etap 4** — warstwa LLM (Claude): narracja vs realne instrukcje
-- [ ] **Etap 5** — reakcja agenta (delegacja + głos NIE)
-- [ ] **Etap 6** — tożsamość ERC-8004 + audyt + reputacja
-- [ ] **Etap 7** — mitygacja: redeploy z timelockiem, dowód powstrzymania ataku
+- [x] **Stage 0** — environment, repo, OpenZeppelin, Arc configuration
+- [x] **Stage 1** — vulnerable DAO contracts + local tests
+- [x] **Stage 2** — deploy on Arc + end-to-end attack simulation (on-chain golden test)
+- [x] **Stage 3** — agent: deterministic core (listener + parser + scoring)
+- [x] **Stage 4** — LLM layer (Claude): narrative vs. real instructions
+- [x] **Stage 5** — agent reaction (delegation + NO vote)
+- [x] **Stage 6** — ERC-8004 identity + decision audit + reputation
+- [x] **Stage 7** — mitigation: redeploy with timelock, proof the attack is stopped
 
-## Zasoby z poprzednich prac (`/home/kajko/arc-testnet-hello`)
+See [`docs/PITCH.md`](docs/PITCH.md) for the full narrative and on-chain proofs, and
+[`docs/SESSION-LOG.md`](docs/SESSION-LOG.md) for the chronological build log and deployment inventory.
 
-- **Wallet B** `0x6D4843155412832dC3Fa9C59e593cdAfdf52639D` (~13.5 USDC gas) — deployer, klucz w `arc-testnet-hello/.env` jako `PRIVATE_KEY`.
-- Działający `CIRCLE_API_KEY` + `ENTITY_SECRET`, portfele DCW (custody Circle) — w odwodzie.
+## Deployments (Arc Testnet, chainId 5042002)
+
+**Vulnerable DAO** (baseline + reaction demos): inventory in `docs/deployed.json` (realistic,
+~1h cycle) and `docs/deployed-fast.json` (fast, ~35s cycle).
+
+**Timelocked DAO** (Stage 7 mitigation): inventory in `docs/deployed-timelocked.json`.
+
+**ERC-8004 registries**: `docs/deployed-erc8004.json`.
+
+## Running the agent / demos
+
+```bash
+cd agent
+npm install
+npm run identity                                        # on-chain ERC-8004 identity + reputation (read-only)
+npm run stage6                                          # E2E Stage 6: decision audit of WGIP-1 + validator score
+DEPLOYED_FILE=deployed-fast.json      npm run stage5    # vote-defense demo (~40s, fresh attack cycle)
+DEPLOYED_FILE=deployed-timelocked.json npm run stage7   # timelock-defense demo (attack wins vote, agent cancels)
+DEPLOYED_FILE=deployed-fast.json      npm run scan      # score existing proposals (core + LLM)
+```
+
+Without `DEPLOYED_FILE` the agent targets the realistic DAO. `ANTHROPIC_API_KEY` in `.env` enables
+the LLM layer. The ERC-8004 registries are independent of `DEPLOYED_FILE` (always read from
+`docs/deployed-erc8004.json`).
+
+## Wallets & secrets
+
+Private keys live in `.env` (gitignored). Deployer is **Wallet B**
+`0x6D4843155412832dC3Fa9C59e593cdAfdf52639D`. Role wallets (attacker, honest voter, agent,
+validator) are listed in the deployment inventories under `docs/`.
