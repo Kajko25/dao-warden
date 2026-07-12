@@ -92,11 +92,13 @@ LLM layer. The ERC-8004 registries are independent of `DEPLOYED_FILE` — always
 `0x0CbCaa61344Efef42916a7461e1bF2B673Fc4a21` · Treasury `0xD3FBEE1CAD68EC7c4C68632A1175b4Dba9BAF293`
 · MockAsset mUSD `0xe17a3d3c1bECAAC8A7f66F54598204C9F60EeaE5`.
 
-**ERC-8004 registries (Stage 6):** IdentityRegistry `0x5a33040857B28DCB05CBE4dC32028705AaF34D36` ·
-ValidationRegistry `0xb7f7F332a3A8523fbd3F18bC624544a63f422dE4`. Agent: agentId 1, owner =
+**ERC-8004 registries (Stage 6, redeployed in English 2026-07-12):** IdentityRegistry
+`0x103D690aAc91D88adc01701431dB7e65a9b915fd` · ValidationRegistry
+`0x15E965CE0eDa0668464E41D88bca31212b96D33F`. Agent: agentId 1, owner =
 agent wallet `0x0bDE…BEFC`, AgentCard `ipfs://bafkreih3vn4ehc3ilgor6ces6cswjzwmcclapcy6nm34sijklnvlwfqnyu`
 (file `docs/agent-card.json`; CID genuine but unpinned — see `docs/agent-card.cid.txt`).
-Inventory and txs in `docs/deployed-erc8004.json`.
+Inventory and txs in `docs/deployed-erc8004.json`. (The first Stage 6 deploy — Identity `0x5a33…4D36`,
+Validation `0xb7f7…2dE4` — is abandoned; its audited record was in Polish. See Session 3 below.)
 
 **Timelocked variant (Stage 7):** GovToken `0x32Ebc2098E99904047303FbBDda8C93FA255ad5A` ·
 TimelockController `0x5fB14e2398E53d15E044b770B8aCB67FDa04337f` (minDelay 120s) · DAOGovernorTimelocked
@@ -264,3 +266,20 @@ integrity proof. Re-running `npm run stage6` would file a fresh English record i
 **Visual pitch.** Added `docs/pitch.html` — a self-contained, theme-aware "defense dossier" for the
 committee (three-outcome proof, WGIP-1 threat readout, two defense layers, ERC-8004 accountability,
 on-chain proofs appendix). Also published as a private Artifact on claude.ai.
+
+**ERC-8004 redeployed in English (2026-07-12).** Because the original Stage 6 audited decision record
+was in Polish and its keccak/CID are sealed on-chain (immutable), fixing it in place was impossible.
+Instead we deployed FRESH registries and re-ran `stage6` with the English agent, giving a single clean
+English audit trail (reputation 1 review, average 100 — not an appended second one). New addresses:
+IdentityRegistry `0x103D690aAc91D88adc01701431dB7e65a9b915fd` (deploy tx
+`0x7851a9160afe8401ddc37cef38face3179a75156a9ac1236b8fedf65339c0c06`), ValidationRegistry
+`0x15E965CE0eDa0668464E41D88bca31212b96D33F` (deploy tx
+`0xe7cc7fb671913cb59bfde809747520ba70f2b47f5d2308a0ece783e02ac0e70e`), register agent tx
+`0x90ed7051f5f16aaf8303fe397f040f8b875dfe742c928ba764a096ce3c4114df`. English decision record
+`docs/decisions/559681ee8639ad20.json`: agent files it (CRITICAL 100 + LLM MAJOR_MISMATCH 95 → VOTE_NO,
+validationRequest tx `0x1d8d0252241fcb9c50be329210104e27412bb7967aeaee86c778c327040d09f8`, requestHash
+`0x559681ee…d83e38`, requestURI `ipfs://bafkreidi4bf6rmm5g73n5vwewwnxhkv33oishxwmw2gg35lwllqsuzqhra`),
+validator scores 100/100 (validationResponse tx `0xb8e6324419d8764a9b93edc6a7dade4f11aa123ee0b88403d2d79019c3e7873e`).
+Integrity re-verified with `cast`: keccak256 of the stored record == on-chain requestHash. The old Polish
+record file was removed; the first registries are simply abandoned on-chain. The proposal `description`
+quoted inside the record stays Polish — it is the real, immutable on-chain WGIP-1 title.

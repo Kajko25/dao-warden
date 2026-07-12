@@ -3,10 +3,11 @@
   "chainId": 5042002,
   "stage": "6 — ERC-8004 identity + audit trail + validator reputation",
   "deployedAt": "2026-07-12",
+  "redeployedAt": "2026-07-12 (fresh registries so the audited decision record is in English)",
   "deployer": "0x6D4843155412832dC3Fa9C59e593cdAfdf52639D",
   "contracts": {
-    "IdentityRegistry": "0x5a33040857B28DCB05CBE4dC32028705AaF34D36",
-    "ValidationRegistry": "0xb7f7F332a3A8523fbd3F18bC624544a63f422dE4"
+    "IdentityRegistry": "0x103D690aAc91D88adc01701431dB7e65a9b915fd",
+    "ValidationRegistry": "0x15E965CE0eDa0668464E41D88bca31212b96D33F"
   },
   "agent": {
     "agentId": 1,
@@ -21,13 +22,14 @@
   },
   "validator": "0xFd8d7CbE0cC709468595926DE552b6E6a2c955fB",
   "txHashes": {
-    "deployIdentityRegistry": "0xcbde2ca62372bd9ca43ed0d7f6f262e7618b109dc178798234f1d1a886414b38",
-    "deployValidationRegistry": "0x90be37f96422540573d199352afe845be128d2d8b1c689dca65fd719ad17760e",
-    "registerAgent": "0xd288094b0c8f5822fd0484520bfb0def6a25d1b1579634e7d65c7109ae38b28f"
+    "deployIdentityRegistry": "0x7851a9160afe8401ddc37cef38face3179a75156a9ac1236b8fedf65339c0c06",
+    "deployValidationRegistry": "0xe7cc7fb671913cb59bfde809747520ba70f2b47f5d2308a0ece783e02ac0e70e",
+    "registerAgent": "0x90ed7051f5f16aaf8303fe397f040f8b875dfe742c928ba764a096ce3c4114df"
   },
   "notes": {
-    "globalAgentId": "eip155:5042002:0x5a33040857B28DCB05CBE4dC32028705AaF34D36:1",
-    "ipfsPinning": "AgentCard NIE przypiety do publicznego IPFS (brak creds). CID prawdziwy i content-addressowany — patrz docs/agent-card.cid.txt.",
-    "specDeviations": "IdentityRegistry pomija setAgentWallet z podpisem EIP-712 (portfel agenta == wlasciciel). ValidationRegistry uzywa constructor zamiast initialize (brak proxy)."
+    "globalAgentId": "eip155:5042002:0x103D690aAc91D88adc01701431dB7e65a9b915fd:1",
+    "ipfsPinning": "AgentCard is NOT pinned to public IPFS (no credentials). The CID is genuine and content-addressed — see docs/agent-card.cid.txt.",
+    "specDeviations": "IdentityRegistry omits the EIP-712-signed setAgentWallet (agent wallet == owner). ValidationRegistry uses a constructor instead of initialize (no proxy).",
+    "supersedes": "First Stage 6 deploy (Identity 0x5a33…4D36, Validation 0xb7f7…2dE4) whose audited decision record was in Polish; those registries are abandoned."
   }
 }

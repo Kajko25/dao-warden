@@ -109,7 +109,7 @@ submit its own decisions for validation. The standard serves two functions at on
   its CID = the stored `requestURI`.
 - **A reputation signal** — an **independent validator** scores the decision (`validationResponse`,
   0–100); `getSummary` aggregates this into the agent's reputation. Demonstrated on the real WGIP-1
-  attack: the agent recorded a `VOTE_NO` decision (CRITICAL 100 + MAJOR_MISMATCH 92), and the
+  attack: the agent recorded a `VOTE_NO` decision (CRITICAL 100 + MAJOR_MISMATCH 95), and the
   validator confirmed it with a score of **100/100 → reputation: 1 review, average 100**.
 
 The result: the agent has a **portable on-chain identity** (`eip155:5042002:<registry>:1`) and a
@@ -174,9 +174,9 @@ Contracts deployed and independently verified (`cast`), explorer: `testnet.arcsc
 | Treasury asset (mUSD) | `0xe17a3d3c1bECAAC8A7f66F54598204C9F60EeaE5` |
 | Vulnerability parameters | 1% quorum, proposal threshold 0, no timelock |
 | Treasury (pre-attack) | 1,000,000 mUSD |
-| **IdentityRegistry** (ERC-8004) | `0x5a33040857B28DCB05CBE4dC32028705AaF34D36` |
-| **ValidationRegistry** (ERC-8004) | `0xb7f7F332a3A8523fbd3F18bC624544a63f422dE4` |
-| Global agentId | `eip155:5042002:0x5a33…4D36:1` (owner = agent wallet) |
+| **IdentityRegistry** (ERC-8004) | `0x103D690aAc91D88adc01701431dB7e65a9b915fd` |
+| **ValidationRegistry** (ERC-8004) | `0x15E965CE0eDa0668464E41D88bca31212b96D33F` |
+| Global agentId | `eip155:5042002:0x103D…915fd:1` (owner = agent wallet) |
 | **Timelocked variant (Stage 7):** | |
 | DAOGovernorTimelocked | `0x641181a13c3114392e40fB4dc0785ACE279E9c1E` |
 | **TimelockController** (minDelay 120 s) | `0x5fB14e2398E53d15E044b770B8aCB67FDa04337f` |
