@@ -6,10 +6,13 @@
 
 ---
 
-## 🟢 LIVE STATE (as of 2026-07-12) — 🎉 STAGE 7 COMPLETE ON-CHAIN. FULL ROADMAP (0–7) DONE.
+## 🟢 LIVE STATE (as of 2026-07-13) — 🎉 FULL ROADMAP (0–7) DONE + LIVE WEB DASHBOARD IN `web/`.
 
 **Complete: Stages 0, 1, 2, 3, 4, 5, 6, 7 — all deployed and verified on Arc.** Nothing is running
 in the background. Only "cosmetic" items remain for the final committee presentation (see the bottom).
+**New (2026-07-13):** a public read-only dashboard (`web/`, Next.js + viem) that shows the whole
+experiment live from Arc in the browser — deploy it by importing the repo in Vercel with Root
+Directory `web/` (no env vars needed). Details in the log entry at the bottom and `web/README.md`.
 
 **Stage 7 — deploy + on-chain E2E proof (2026-07-12):**
 - Deployed the **timelocked-fast** variant (`docs/deployed-timelocked.json`): GovToken
@@ -290,3 +293,41 @@ Polish and its CID is the on-chain `agentURI`, so we translated the card, recomp
 `IdentityRegistry.setAgentURI(1, …)` (tx `0xc34db186d28a21c162b64537508663806fd1f1b6e9e74b2ada56bfe8579aba65`).
 Verified: `tokenURI(1)` == the recomputed CID of the English file. Also translated `agent/README.md`
 (and updated it through Stage 7) and the agent's `package.json` description.
+
+---
+
+## 2026-07-13 — Live web dashboard (`web/`)
+
+**Goal:** a public, user-facing frontend (deployable to Vercel) that lets anyone — including the
+committee — watch the whole experiment live on Arc, without trusting our documents.
+
+**What was built (`web/`, Next.js 16 + viem, read-only):**
+- **"One attack, three outcomes"** strip — live treasury balances of the three deployments read
+  from chain on every load: baseline **0 mUSD (drained)**, guardian-vote **1,000,000 mUSD intact**,
+  guardian+timelock **1,000,000 mUSD intact**. The project's thesis as three live numbers.
+- **Per-deployment proposal view** — every `ProposalCreated` is decoded in the browser
+  (`Treasury.withdraw` recognition, same as the agent), scored with the agent's exact four
+  deterministic rules **recomputed client-side at the proposal's creation block**, and shown with
+  live vote tallies, lifecycle state, and a defense-outcome banner (drained / defeated / cancelled).
+- **ERC-8004 panel** — agent identity (ERC-721 #1, global id, AgentCard URI with the honest
+  "not pinned" caveat), filed decision records (linked to the repo files whose keccak256 == the
+  on-chain `requestHash`), validator attestations and the reputation summary (1 review, avg 100).
+- Every address/tx links to `testnet.arcscan.app`; footer states the trust model explicitly
+  (read-only page; the agent runs off-chain; no private keys or API keys in the browser).
+
+**Empirical findings (verified against the live RPC, not assumed):**
+- Arc `eth_getLogs` is hard-limited to a **10,000-block range** (error -32614 above that).
+  Discovery therefore = seeded known proposal blocks (immutable log positions, recorded in
+  `web/lib/deployments.ts`) + live scan of the last 20,000 blocks + optional chunked
+  "scan full history" with a progress indicator.
+- Governor deploy blocks found by `eth_getCode` binary search: baseline 51453447,
+  fast 51465959, timelocked 51496737; proposal creation blocks 51454256 / 51466380 / 51496834.
+- The RPC sends permissive CORS headers, so the browser can read the chain directly — no backend.
+
+**Verification:** production build clean; the chain library exercised standalone against live Arc
+(expected values for all three proposals + audit trail); the running page driven in headless
+Chromium — light and dark mode, all three tabs, full-history scan — zero console errors, all
+on-chain values render correctly (screenshots reviewed).
+
+**Vercel deploy (user action):** import the GitHub repo in Vercel → Root Directory `web/` →
+Deploy. No environment variables required.

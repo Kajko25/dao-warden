@@ -2,7 +2,7 @@
 
 > A living document prepared for the evaluation committee: what DAO-WARDEN is, the problem it
 > solves, how it is built, and how it came together.
-> Last updated: 2026-07-12 (**Stages 0–7 complete — full roadmap closed**).
+> Last updated: 2026-07-13 (**Stages 0–7 complete — full roadmap closed; live web dashboard added**).
 
 ## TL;DR (for the committee)
 
@@ -20,6 +20,11 @@ independent, complementary layers** — and we proved each one on-chain against 
 On top of that: **narrative-vs-instructions** analysis by Claude (catches "nice description masking
 a drain") and **identity + decision trail + reputation** via ERC-8004. Everything independently
 verified (`cast`).
+
+Don't take the table's word for it: the **live dashboard** (`web/`, Next.js — deployable to Vercel
+in one click) reads all three treasuries, every proposal, and the ERC-8004 audit trail straight
+from Arc in your browser, and recomputes the guardian's risk scores client-side so each claim
+above can be checked live.
 
 ---
 

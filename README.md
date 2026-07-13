@@ -51,6 +51,7 @@ src/        contracts (GovToken, Treasury, DAOGovernor, DAOGovernorTimelocked, e
 test/       Foundry tests (attack golden test, timelock defense golden test)
 script/     deploy scripts
 agent/      TS + Viem agent (detection core, LLM layer, reaction, ERC-8004 integration)
+web/        live dashboard (Next.js + viem, read-only, Vercel-ready) — see web/README.md
 docs/       notes, pitch, session log, deployment inventories
 ```
 
