@@ -21,10 +21,10 @@ On top of that: **narrative-vs-instructions** analysis by Claude (catches "nice 
 a drain") and **identity + decision trail + reputation** via ERC-8004. Everything independently
 verified (`cast`).
 
-Don't take the table's word for it: the **live dashboard** (`web/`, Next.js — deployable to Vercel
-in one click) reads all three treasuries, every proposal, and the ERC-8004 audit trail straight
-from Arc in your browser, and recomputes the guardian's risk scores client-side so each claim
-above can be checked live.
+Don't take the table's word for it: the **live dashboard** —
+**<https://dao-warden-n43e.vercel.app/>** (`web/`, Next.js on Vercel) — reads all three
+treasuries, every proposal, and the ERC-8004 audit trail straight from Arc in your browser, and
+recomputes the guardian's risk scores client-side so each claim above can be checked live.
 
 ---
 

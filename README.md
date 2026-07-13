@@ -1,5 +1,10 @@
 # DAO-WARDEN
 
+### 📊 [**Open the live dashboard →**](https://dao-warden-n43e.vercel.app/)
+
+Everything read live from Arc Testnet in your browser: the three treasury outcomes, every
+proposal with the guardian's risk score recomputed client-side, and the ERC-8004 audit trail.
+
 ### 🛡️ [**View the visual pitch →**](https://kajko25.github.io/dao-warden/)
 
 A one-page walkthrough of the problem, the two-layer defense, and the on-chain proofs.

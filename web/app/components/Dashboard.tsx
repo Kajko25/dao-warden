@@ -273,7 +273,7 @@ export default function Dashboard() {
           <a className="underline underline-offset-2 hover:text-ink" href={EXPLORER_URL} target="_blank" rel="noreferrer">
             Arcscan explorer
           </a>
-          <span className="font-mono">{ERC8004.globalAgentId}</span>
+          <span className="break-all font-mono">{ERC8004.globalAgentId}</span>
         </div>
         <p className="mt-2 max-w-3xl leading-relaxed">
           This dashboard is read-only: it recomputes the guardian&apos;s deterministic risk scores in

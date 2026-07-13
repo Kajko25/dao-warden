@@ -1,5 +1,7 @@
 # DAO-WARDEN — Live Dashboard
 
+**Live at: <https://dao-warden-n43e.vercel.app/>**
+
 A read-only Next.js dashboard that shows the whole DAO-WARDEN experiment live from Arc
 Testnet, in the visitor's browser:
 

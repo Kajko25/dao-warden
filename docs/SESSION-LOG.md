@@ -11,8 +11,9 @@
 **Complete: Stages 0, 1, 2, 3, 4, 5, 6, 7 — all deployed and verified on Arc.** Nothing is running
 in the background. Only "cosmetic" items remain for the final committee presentation (see the bottom).
 **New (2026-07-13):** a public read-only dashboard (`web/`, Next.js + viem) that shows the whole
-experiment live from Arc in the browser — deploy it by importing the repo in Vercel with Root
-Directory `web/` (no env vars needed). Details in the log entry at the bottom and `web/README.md`.
+experiment live from Arc in the browser — **deployed by the user to
+<https://dao-warden-n43e.vercel.app/>** (Vercel, Root Directory `web/`, no env vars; auto-redeploys
+on every push). Details in the log entry at the bottom and `web/README.md`.
 
 **Stage 7 — deploy + on-chain E2E proof (2026-07-12):**
 - Deployed the **timelocked-fast** variant (`docs/deployed-timelocked.json`): GovToken
