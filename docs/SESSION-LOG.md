@@ -332,3 +332,29 @@ on-chain values render correctly (screenshots reviewed).
 
 **Vercel deploy (user action):** import the GitHub repo in Vercel → Root Directory `web/` →
 Deploy. No environment variables required.
+
+---
+
+## 2026-07-21 — Source verification on arcscan (all 15 contracts)
+
+All deployed contracts now show **verified source code + ABI** on
+`testnet.arcscan.app` (Blockscout) — the committee can read the actual
+Solidity behind every address in this log instead of raw bytecode.
+
+Submitted via `forge verify-contract --verifier blockscout` with
+constructor args reproduced from the `broadcast/` records; several clones
+(same bytecode, e.g. the three GovTokens/Treasuries/MockERC20s) were
+auto-matched by Blockscout after the first instance verified. Confirmed
+`is_verified: true` for all 15 via the arcscan API:
+
+- Realistic DAO: GovToken `0xa2f1…F622`, DAOGovernor `0x0CbC…4a21`,
+  Treasury `0xD3FB…F293`, MockERC20 `0xe17a…eaE5`
+- Fast DAO: GovToken `0x0e93…EcE4`, DAOGovernor `0xddd5…A6c4`,
+  Treasury `0x7fc5…cF92`, MockERC20 `0xbFA5…31FC`
+- Timelocked DAO: GovToken `0x32Eb…ad5A`, TimelockController `0x5fB1…337f`,
+  DAOGovernorTimelocked `0x6411…9c1E`, Treasury `0xB565…39f4`,
+  MockERC20 `0x5907…0c7b`
+- ERC-8004: IdentityRegistry `0x103D…15fd`, ValidationRegistry `0x15E9…D33F`
+
+No transactions involved — verification is an off-chain submission of
+source + metadata matched against on-chain bytecode.
